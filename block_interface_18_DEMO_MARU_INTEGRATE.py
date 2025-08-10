@@ -37,14 +37,14 @@ model_yolo.to(device)
 task_00 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '00.jpg'))
 task_0A = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0A.jpg'))
 task_0B = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg'))
-task_01 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '01.jpg'))
-task_02 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '02.jpg'))
-task_03 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '03.jpg'))
-task_04 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg'))
-task_05 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg'))
-task_06 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg'))
-task_07 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg'))
-task_08 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg'))
+task_01 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '01.jpg')
+task_02 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '02.jpg')
+task_03 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '03.jpg')
+task_04 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
+task_05 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg')
+task_06 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg')
+task_07 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg')
+task_08 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
 task_09 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg'))
 
 #scale_percent = 70 # percent of original size
@@ -329,8 +329,8 @@ class App_Input(customtkinter.CTk): #CTkToplevel
         self.geometry(f"{480}x{320}+{spawn_x}+{spawn_y}")
         #self.geometry("480x320")
         
-        from AppOpener import open
-        open("on-screen keyboard")
+        # from AppOpener import open
+        # open("on-screen keyboard")
 
         self.grid_columnconfigure((0, 1), weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -509,6 +509,8 @@ class TimeIn(customtkinter.CTk):
         self.task_flag_07 = True
         self.task_flag_08 = True
 
+        self.current_question = 1
+
         self.cognitive_age_list = []
 
         global nick_name
@@ -541,8 +543,8 @@ class TimeIn(customtkinter.CTk):
 
         IMAGE_WIDTH = 525 #650
         IMAGE_HEIGHT = 525 #650
-        IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
-        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
+        self.image = customtkinter.CTkImage(light_image=Image.open(task_04), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
         self.label.grid(column=0, row=0)
 
@@ -774,7 +776,7 @@ class TimeIn(customtkinter.CTk):
                     box_design_sort.append(box_design[sort_index[i]])
 
                     
-                if box_design_sort == ans_04 or box_design_sort == ans_04x:
+                if self.current_question == 1 and box_design_sort == ans_04: #or box_design_sort == ans_04x):
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_04)] = 0
                     test_label += img_04
@@ -808,11 +810,12 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg')
-                        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg')
+                        self.image = customtkinter.CTkImage(light_image=Image.open(task_05), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
+                        self.current_question = 2
                         self.task_flag_04 = False
                         self.start_task = time.time()
 
@@ -843,7 +846,7 @@ class TimeIn(customtkinter.CTk):
                     """
 
 
-                elif box_design_sort == ans_05 or box_design_sort == ans_05x:
+                elif self.current_question == 2 and box_design_sort == ans_05: #or box_design_sort == ans_05x):
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_05)] = 0
                     test_label += img_05
@@ -877,11 +880,12 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg')
-                        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg')
+                        self.image = customtkinter.CTkImage(light_image=Image.open(task_06), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
+                        self.current_question = 3
                         self.task_flag_05 = False
                         self.start_task = time.time()
                     
@@ -912,7 +916,7 @@ class TimeIn(customtkinter.CTk):
                     """
 
 
-                elif box_design_sort == ans_06 or box_design_sort == ans_06x:
+                elif self.current_question == 3 and box_design_sort == ans_06: #or box_design_sort == ans_06x):
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_06)] = 0
                     test_label += img_06
@@ -946,11 +950,12 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg')
-                        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg')
+                        self.image = customtkinter.CTkImage(light_image=Image.open(task_07), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
+                        self.current_question = 4
                         self.task_flag_06 = False
                         self.start_task = time.time()
 
@@ -981,7 +986,7 @@ class TimeIn(customtkinter.CTk):
                     """
 
 
-                elif box_design_sort == ans_07 or box_design_sort == ans_07x:
+                elif self.current_question == 4 and box_design_sort == ans_07: #or box_design_sort == ans_07x):
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_07)] = 0
                     test_label += img_07
@@ -1013,13 +1018,13 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
-                        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
+                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
+                        # self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        # self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
+                        # self.label.grid(column=0, row=0)
 
                         self.task_flag_07 = False
-                        self.start_task = time.time()
+                        # self.start_task = time.time()
                     
                         self.timer_task_avg = format(float(sum(self.timer_task_all) / len(self.timer_task_all)), ".3f")
                         cognitive_age_avg = int(sum(self.cognitive_age_list) / len(self.cognitive_age_list))
