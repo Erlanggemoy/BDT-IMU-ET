@@ -521,6 +521,8 @@ class TimeIn(customtkinter.CTk):
         self.gender_code = gender_code
         self.age_range_code = age_range_code
 
+        self.retry_button = None
+
         #self.task_state = 1
 
 
@@ -532,7 +534,9 @@ class TimeIn(customtkinter.CTk):
 
     def button_0_callback(self):
 
-        self.state = "disabled"
+        # self.state = "disabled"
+        self.button_0.grid_remove()
+        self.show_current_level_button(self.current_question)
         
         SpeakTextG("こんにちわ")
         SpeakTextG("これから 絵合わせゲームで あなたの認知年齢を みてみましょう")
@@ -598,7 +602,36 @@ class TimeIn(customtkinter.CTk):
 
         #print("Estimated Cognitive Age : " + str(round(cognitive_age[0], 1)) + " years")
 
+    def show_current_level_button(self, level):
+        self.current_level_button = customtkinter.CTkButton(
+            self,
+            text="Level " + str(level),
+            font=("Helvetica", 30)
+        )
+        
+        self.current_level_button.grid(row=2, column=0, columnspan=2, padx=65, pady=65, sticky="nswe")
+    
+    def show_retry_button(self):
+        self.retry_button = customtkinter.CTkButton(
+            self,
+            text="Retry Test",
+            font=("Helvetica", 30),
+            command=self.retry_test
+        )
+        
+        # Position the retry button in the same place as the start button was
+        self.retry_button.grid(row=2, column=0, columnspan=2, padx=65, pady=65, sticky="nswe")
 
+    def retry_test(self):
+        # Reset the application state
+        self.destroy()  # Close the current window
+        # Restart the application
+        app_input = App_Input()
+        app_input.mainloop()
+
+        if nick_name:  # Only proceed if user provided input
+            app = TimeIn()
+            app.mainloop()
 
     # code for video streaming
     def streaming(self):
@@ -816,6 +849,8 @@ class TimeIn(customtkinter.CTk):
                         self.label.grid(column=0, row=0)
 
                         self.current_question = 2
+                        self.current_level_button.grid_remove()
+                        self.show_current_level_button(self.current_question)
                         self.task_flag_04 = False
                         self.start_task = time.time()
 
@@ -886,6 +921,8 @@ class TimeIn(customtkinter.CTk):
                         self.label.grid(column=0, row=0)
 
                         self.current_question = 3
+                        self.current_level_button.grid_remove()
+                        self.show_current_level_button(self.current_question)
                         self.task_flag_05 = False
                         self.start_task = time.time()
                     
@@ -956,6 +993,8 @@ class TimeIn(customtkinter.CTk):
                         self.label.grid(column=0, row=0)
 
                         self.current_question = 4
+                        self.current_level_button.grid_remove()
+                        self.show_current_level_button(self.current_question)
                         self.task_flag_06 = False
                         self.start_task = time.time()
 
@@ -1024,6 +1063,7 @@ class TimeIn(customtkinter.CTk):
                         # self.label.grid(column=0, row=0)
 
                         self.task_flag_07 = False
+                        self.current_level_button.grid_remove()
                         # self.start_task = time.time()
                     
                         self.timer_task_avg = format(float(sum(self.timer_task_all) / len(self.timer_task_all)), ".3f")
@@ -1170,7 +1210,8 @@ class TimeIn(customtkinter.CTk):
                         self.label.grid(column=0, row=0)
 
                         self.task_flag_08 = False
-                        self.start_task = time.time()
+                        
+                        self.show_retry_button()
 
                         #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                         #break
