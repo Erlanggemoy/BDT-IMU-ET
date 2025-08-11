@@ -674,7 +674,7 @@ class TimeIn(customtkinter.CTk):
 
         for x1, y1, x2, y2, conf_pred, cls_id, cls in list_tracked_objects:
 
-            if conf_pred > 0.7:
+            if conf_pred > 0.5:
 
                 #avg_confidence.append( round(conf_pred,2) )
 
