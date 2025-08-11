@@ -548,7 +548,7 @@ class TimeIn(customtkinter.CTk):
         IMAGE_WIDTH = 525 #650
         IMAGE_HEIGHT = 525 #650
         # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
-        self.image = customtkinter.CTkImage(light_image=Image.open(task_04), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+        self.image = customtkinter.CTkImage(light_image=Image.open(task_01), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
         self.label.grid(column=0, row=0)
 
@@ -809,7 +809,217 @@ class TimeIn(customtkinter.CTk):
                     box_design_sort.append(box_design[sort_index[i]])
 
                     
-                if self.current_question == 1 and box_design_sort == ans_04: #or box_design_sort == ans_04x):
+                if self.current_question == 1 and box_design_sort == ans_01:
+                    test_label = frame[20:120, 20:120]
+                    test_label [np.where(mask_img_01)] = 0
+                    test_label += img_01
+                    
+                    #self.task_state = self.task_state + 1
+                    
+                    if(self.task_flag_01):
+                        end_task = time.time()
+                        self.timer_task_01 = round((end_task - self.start_task - timer_return), 2)
+                        self.timer_task_all.append(self.timer_task_01)
+
+                        self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_01))
+
+                        print ("TASK 1 COMPLETED in " + str(self.timer_task_01) +" seconds")
+                        SpeakTextG("問題 1 は" + str(int(self.timer_task_01)) +" 秒で できました。")
+
+                        if int(self.timer_task_01) < 10:
+                            SpeakTextG("さいこうだよ.")
+                        elif int(self.timer_task_01) < 15:
+                            SpeakTextG("すばらしい.")
+                        elif int(self.timer_task_01) < 20:
+                            SpeakTextG("グッジョブ！.")
+                        elif int(self.timer_task_01) < 25:
+                            SpeakTextG("よくできたね.")
+                        elif int(self.timer_task_01) < 30:
+                            SpeakTextG("ナイス.")
+                        else:
+                            SpeakTextG("がんばったね.")
+
+                        SpeakTextG("次は問題 2 です。")
+
+                        #IMAGE_WIDTH = 650
+                        #IMAGE_HEIGHT = 650
+                        self.image = customtkinter.CTkImage(light_image=Image.open(task_02), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
+                        self.label.grid(column=0, row=0)
+
+                        self.current_question = 2
+                        self.current_level_button.grid_remove()
+                        self.show_current_level_button(self.current_question)
+                        self.task_flag_01 = False
+                        self.start_task = time.time()
+
+                    # Detect Thumb
+                    """
+                    if (thumb_state == 1 and thumb_flag_01 == True):
+                        end_thumb = time.time()
+                        timer_thumb = end_thumb - start_thumb
+                        t_thumb_04 = round((timer_thumb - self.timer_task_04), 2)
+                        t_thumb_all.append(t_thumb_04)
+
+                        start_thumb = time.time()
+                        thumb_flag_04 = False
+
+                        timer_speak = self.timer_task_04
+                        if timer_speak < 10:
+                            SpeakTextG("Amazing.")
+                        if timer_speak < 15:
+                            SpeakTextG("Awesome.")
+                        elif timer_speak < 20:
+                            SpeakTextG("Great.")
+                        elif timer_speak < 25:
+                            SpeakTextG("Good job.")
+                        elif timer_speak < 30:
+                            SpeakTextG("Well done.")
+                        else:
+                            SpeakTextG("Give your best.")
+                    """
+
+                elif self.current_question == 2 and box_design_sort == ans_02:
+                    test_label = frame[20:120, 20:120]
+                    test_label [np.where(mask_img_02)] = 0
+                    test_label += img_02
+                    
+                    #self.task_state = self.task_state + 1
+                    
+                    if(self.task_flag_02):
+                        end_task = time.time()
+                        self.timer_task_02 = round((end_task - self.start_task - timer_return), 2)
+                        self.timer_task_all.append(self.timer_task_02)
+
+                        self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_02))
+
+                        print ("TASK 2 COMPLETED in " + str(self.timer_task_02) +" seconds")
+                        SpeakTextG("問題 2 は" + str(int(self.timer_task_02)) +" 秒で できました。")
+
+                        if int(self.timer_task_02) < 10:
+                            SpeakTextG("さいこうだよ.")
+                        elif int(self.timer_task_02) < 15:
+                            SpeakTextG("すばらしい.")
+                        elif int(self.timer_task_02) < 20:
+                            SpeakTextG("グッジョブ！.")
+                        elif int(self.timer_task_02) < 25:
+                            SpeakTextG("よくできたね.")
+                        elif int(self.timer_task_02) < 30:
+                            SpeakTextG("ナイス.")
+                        else:
+                            SpeakTextG("がんばったね.")
+
+                        SpeakTextG("次は問題 3 です。")
+
+                        #IMAGE_WIDTH = 650
+                        #IMAGE_HEIGHT = 650
+                        self.image = customtkinter.CTkImage(light_image=Image.open(task_03), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
+                        self.label.grid(column=0, row=0)
+
+                        self.current_question = 3
+                        self.current_level_button.grid_remove()
+                        self.show_current_level_button(self.current_question)
+                        self.task_flag_02 = False
+                        self.start_task = time.time()
+
+                    # Detect Thumb
+                    """
+                    if (thumb_state == 1 and thumb_flag_04 == True):
+                        end_thumb = time.time()
+                        timer_thumb = end_thumb - start_thumb
+                        t_thumb_04 = round((timer_thumb - self.timer_task_04), 2)
+                        t_thumb_all.append(t_thumb_04)
+
+                        start_thumb = time.time()
+                        thumb_flag_04 = False
+
+                        timer_speak = self.timer_task_04
+                        if timer_speak < 10:
+                            SpeakTextG("Amazing.")
+                        if timer_speak < 15:
+                            SpeakTextG("Awesome.")
+                        elif timer_speak < 20:
+                            SpeakTextG("Great.")
+                        elif timer_speak < 25:
+                            SpeakTextG("Good job.")
+                        elif timer_speak < 30:
+                            SpeakTextG("Well done.")
+                        else:
+                            SpeakTextG("Give your best.")
+                    """
+                
+                elif self.current_question == 3 and box_design_sort == ans_03:
+                    test_label = frame[20:120, 20:120]
+                    test_label [np.where(mask_img_03)] = 0
+                    test_label += img_03
+                    
+                    #self.task_state = self.task_state + 1
+                    
+                    if(self.task_flag_03):
+                        end_task = time.time()
+                        self.timer_task_03 = round((end_task - self.start_task - timer_return), 2)
+                        self.timer_task_all.append(self.timer_task_03)
+
+                        self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_03))
+
+                        print ("TASK 3 COMPLETED in " + str(self.timer_task_03) +" seconds")
+                        SpeakTextG("問題 3 は" + str(int(self.timer_task_03)) +" 秒で できました。")
+
+                        if int(self.timer_task_03) < 10:
+                            SpeakTextG("さいこうだよ.")
+                        elif int(self.timer_task_03) < 15:
+                            SpeakTextG("すばらしい.")
+                        elif int(self.timer_task_03) < 20:
+                            SpeakTextG("グッジョブ！.")
+                        elif int(self.timer_task_03) < 25:
+                            SpeakTextG("よくできたね.")
+                        elif int(self.timer_task_03) < 30:
+                            SpeakTextG("ナイス.")
+                        else:
+                            SpeakTextG("がんばったね.")
+
+                        SpeakTextG("次は問題 4 です。")
+
+                        #IMAGE_WIDTH = 650
+                        #IMAGE_HEIGHT = 650
+                        self.image = customtkinter.CTkImage(light_image=Image.open(task_04), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
+                        self.label.grid(column=0, row=0)
+
+                        self.current_question = 4
+                        self.current_level_button.grid_remove()
+                        self.show_current_level_button(self.current_question)
+                        self.task_flag_03 = False
+                        self.start_task = time.time()
+
+                    # Detect Thumb
+                    """
+                    if (thumb_state == 1 and thumb_flag_04 == True):
+                        end_thumb = time.time()
+                        timer_thumb = end_thumb - start_thumb
+                        t_thumb_04 = round((timer_thumb - self.timer_task_04), 2)
+                        t_thumb_all.append(t_thumb_04)
+
+                        start_thumb = time.time()
+                        thumb_flag_04 = False
+
+                        timer_speak = self.timer_task_04
+                        if timer_speak < 10:
+                            SpeakTextG("Amazing.")
+                        if timer_speak < 15:
+                            SpeakTextG("Awesome.")
+                        elif timer_speak < 20:
+                            SpeakTextG("Great.")
+                        elif timer_speak < 25:
+                            SpeakTextG("Good job.")
+                        elif timer_speak < 30:
+                            SpeakTextG("Well done.")
+                        else:
+                            SpeakTextG("Give your best.")
+                    """    
+
+                elif self.current_question == 4 and box_design_sort == ans_04:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_04)] = 0
                     test_label += img_04
@@ -823,8 +1033,8 @@ class TimeIn(customtkinter.CTk):
 
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_04))
 
-                        print ("TASK 1 COMPLETED in " + str(self.timer_task_04) +" seconds")
-                        SpeakTextG("問題 1 は" + str(int(self.timer_task_04)) +" 秒で できました。")
+                        print ("TASK 4 COMPLETED in " + str(self.timer_task_04) +" seconds")
+                        SpeakTextG("問題 4 は" + str(int(self.timer_task_04)) +" 秒で できました。")
 
                         if int(self.timer_task_04) < 10:
                             SpeakTextG("さいこうだよ.")
@@ -839,16 +1049,15 @@ class TimeIn(customtkinter.CTk):
                         else:
                             SpeakTextG("がんばったね.")
 
-                        SpeakTextG("次は問題 2 です。")
+                        SpeakTextG("次は問題 5 です。")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg')
                         self.image = customtkinter.CTkImage(light_image=Image.open(task_05), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 2
+                        self.current_question = 5
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_04 = False
@@ -881,7 +1090,7 @@ class TimeIn(customtkinter.CTk):
                     """
 
 
-                elif self.current_question == 2 and box_design_sort == ans_05: #or box_design_sort == ans_05x):
+                elif self.current_question == 5 and box_design_sort == ans_05:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_05)] = 0
                     test_label += img_05
@@ -895,8 +1104,8 @@ class TimeIn(customtkinter.CTk):
 
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_05))
 
-                        print ("TASK 2 COMPLETED in " + str(self.timer_task_05) +" seconds")
-                        SpeakTextG("問題 2 は  " + str(int(self.timer_task_05)) +" 秒できました。")
+                        print ("TASK 5 COMPLETED in " + str(self.timer_task_05) +" seconds")
+                        SpeakTextG("問題 5 は  " + str(int(self.timer_task_05)) +" 秒できました。")
 
                         if int(self.timer_task_05) < 10:
                             SpeakTextG("さいこうだよ.")
@@ -911,16 +1120,15 @@ class TimeIn(customtkinter.CTk):
                         else:
                             SpeakTextG("がんばったね.")
 
-                        SpeakTextG("次は問題 3 です。")
+                        SpeakTextG("次は問題 6 です。")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg')
                         self.image = customtkinter.CTkImage(light_image=Image.open(task_06), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 3
+                        self.current_question = 6
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_05 = False
@@ -953,7 +1161,7 @@ class TimeIn(customtkinter.CTk):
                     """
 
 
-                elif self.current_question == 3 and box_design_sort == ans_06: #or box_design_sort == ans_06x):
+                elif self.current_question == 6 and box_design_sort == ans_06:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_06)] = 0
                     test_label += img_06
@@ -967,8 +1175,8 @@ class TimeIn(customtkinter.CTk):
 
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_06))
 
-                        print ("TASK 3 COMPLETED in " + str(self.timer_task_06) +" seconds")
-                        SpeakTextG("問題 3 は  " + str(int(self.timer_task_06)) +" 秒できました。")
+                        print ("TASK 6 COMPLETED in " + str(self.timer_task_06) +" seconds")
+                        SpeakTextG("問題 6 は  " + str(int(self.timer_task_06)) +" 秒できました。")
 
                         if int(self.timer_task_06) < 10:
                             SpeakTextG("さいこうだよ.")
@@ -983,16 +1191,15 @@ class TimeIn(customtkinter.CTk):
                         else:
                             SpeakTextG("がんばったね.")
 
-                        SpeakTextG("次は問題 4 です。")
+                        SpeakTextG("次は問題 7 です。")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg')
                         self.image = customtkinter.CTkImage(light_image=Image.open(task_07), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 4
+                        self.current_question = 7
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_06 = False
@@ -1024,12 +1231,11 @@ class TimeIn(customtkinter.CTk):
                             SpeakTextG("Give your best.")
                     """
 
-
-                elif self.current_question == 4 and box_design_sort == ans_07: #or box_design_sort == ans_07x):
+                elif self.current_question == 7 and box_design_sort == ans_07:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_07)] = 0
                     test_label += img_07
-
+                    
                     #self.task_state = self.task_state + 1
                     
                     if(self.task_flag_07):
@@ -1039,8 +1245,8 @@ class TimeIn(customtkinter.CTk):
 
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_07))
 
-                        print ("TASK 4 COMPLETED in " + str(self.timer_task_07) +" seconds")
-                        SpeakTextG("問題 4 は  " + str(int(self.timer_task_07)) +" 秒できました。")
+                        print ("TASK 7 COMPLETED in " + str(self.timer_task_07) +" seconds")
+                        SpeakTextG("問題 7 は" + str(int(self.timer_task_07)) +" 秒で できました。")
 
                         if int(self.timer_task_07) < 10:
                             SpeakTextG("さいこうだよ.")
@@ -1055,6 +1261,76 @@ class TimeIn(customtkinter.CTk):
                         else:
                             SpeakTextG("がんばったね.")
 
+                        SpeakTextG("次は問題 8 です。")
+
+                        #IMAGE_WIDTH = 650
+                        #IMAGE_HEIGHT = 650
+                        self.image = customtkinter.CTkImage(light_image=Image.open(task_08), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
+                        self.label.grid(column=0, row=0)
+
+                        self.current_question = 8
+                        self.current_level_button.grid_remove()
+                        self.show_current_level_button(self.current_question)
+                        self.task_flag_07 = False
+                        self.start_task = time.time()
+
+                    # Detect Thumb
+                    """
+                    if (thumb_state == 1 and thumb_flag_04 == True):
+                        end_thumb = time.time()
+                        timer_thumb = end_thumb - start_thumb
+                        t_thumb_04 = round((timer_thumb - self.timer_task_04), 2)
+                        t_thumb_all.append(t_thumb_04)
+
+                        start_thumb = time.time()
+                        thumb_flag_04 = False
+
+                        timer_speak = self.timer_task_04
+                        if timer_speak < 10:
+                            SpeakTextG("Amazing.")
+                        if timer_speak < 15:
+                            SpeakTextG("Awesome.")
+                        elif timer_speak < 20:
+                            SpeakTextG("Great.")
+                        elif timer_speak < 25:
+                            SpeakTextG("Good job.")
+                        elif timer_speak < 30:
+                            SpeakTextG("Well done.")
+                        else:
+                            SpeakTextG("Give your best.")
+                    """
+
+                elif self.current_question == 8 and box_design_sort == ans_08:
+                    test_label = frame[20:120, 20:120]
+                    test_label [np.where(mask_img_08)] = 0
+                    test_label += img_08
+
+                    #self.task_state = self.task_state + 1
+                    
+                    if(self.task_flag_08):
+                        end_task = time.time()
+                        self.timer_task_08 = round((end_task - self.start_task - timer_return), 2)
+                        self.timer_task_all.append(self.timer_task_08)
+
+                        self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_08))
+
+                        print ("TASK 8 COMPLETED in " + str(self.timer_task_08) +" seconds")
+                        SpeakTextG("問題 8 は  " + str(int(self.timer_task_08)) +" 秒できました。")
+
+                        if int(self.timer_task_08) < 10:
+                            SpeakTextG("さいこうだよ.")
+                        elif int(self.timer_task_08) < 15:
+                            SpeakTextG("すばらしい.")
+                        elif int(self.timer_task_08) < 20:
+                            SpeakTextG("グッジョブ！.")
+                        elif int(self.timer_task_08) < 25:
+                            SpeakTextG("よくできたね.")
+                        elif int(self.timer_task_08) < 30:
+                            SpeakTextG("ナイス.")
+                        else:
+                            SpeakTextG("がんばったね.")
+
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
                         # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
@@ -1062,7 +1338,7 @@ class TimeIn(customtkinter.CTk):
                         # self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         # self.label.grid(column=0, row=0)
 
-                        self.task_flag_07 = False
+                        self.task_flag_08 = False
                         self.current_level_button.grid_remove()
                         # self.start_task = time.time()
                     
