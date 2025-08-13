@@ -35,15 +35,39 @@ model_yolo.to(device)
 task_00 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '00.jpg'))
 task_0A = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0A.jpg'))
 task_0B = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg'))
-task_01 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '01.jpg')
-task_02 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '02.jpg')
-task_03 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '03.jpg')
-task_04 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
-task_05 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg')
-task_06 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg')
-task_07 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg')
-task_08 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
+# Static Level
+# task_01 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '01.jpg')
+# task_02 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '02.jpg')
+# task_03 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '03.jpg')
+# task_04 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
+# task_05 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg')
+# task_06 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg')
+# task_07 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg')
+# task_08 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
 task_09 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg'))
+
+# Random Level
+import random
+LEVEL_VARIANTS = {
+    1: ['1a', '1b', '1c', '1d'],
+    2: ['2a', '2b', '2c', '2d'],
+    3: ['3a', '3b', '3c', '3d'],
+    4: ['4a', '4b', '4c', '4d'],
+    5: ['5a', '5b', '5c', '5d'],
+    6: ['6a', '6b', '6c', '6d'],
+    7: ['7a', '7b', '7c', '7d'],
+    8: ['8a', '8b', '8c', '8d']
+}
+LEVEL_PATHS = {}
+for variants in LEVEL_VARIANTS.values():
+    for variant in variants:
+        level_num = variant[0]  # Get the level number (1-8)
+        LEVEL_PATHS[variant] = os.path.join(
+            BASE_DIR, 
+            'FILES', 
+            'TEST_RANDOM_1500x1500', 
+            f'Lvl {level_num}{variant[1]}.png'  # e.g., 'Lvl 1a.png'
+        )
 
 #scale_percent = 70 # percent of original size
 #task_width = int(task_0B.shape[1] * scale_percent / 100)
@@ -191,21 +215,34 @@ thumb_flag_06 = True
 thumb_flag_07 = True
 thumb_flag_08 = True
 
-ans_01  = [2,1,1,2]
-ans_02  = [1,3,1,1]
-ans_02x = [1,1,3,1]
-ans_03  = [2,2,3,4]
-ans_03x = [2,3,2,4]
-ans_04  = [5,1,4,1]
-ans_04x = [5,4,1,1]
-ans_05  = [4,3,5,6]
-ans_05x = [4,5,3,6]
-ans_06  = [1,4,6,1]
-ans_06x = [1,6,4,1]
-ans_07  = [5,6,4,3]
-ans_07x = [5,4,6,3]
-ans_08  = [5,3,4,5]
-ans_08x = [5,4,3,5]
+# Answers for static question
+# ans_01  = [2,1,1,2]
+# ans_02  = [1,3,1,1]
+# ans_02x = [1,1,3,1]
+# ans_03  = [2,2,3,4]
+# ans_03x = [2,3,2,4]
+# ans_04  = [5,1,4,1]
+# ans_04x = [5,4,1,1]
+# ans_05  = [4,3,5,6]
+# ans_05x = [4,5,3,6]
+# ans_06  = [1,4,6,1]
+# ans_06x = [1,6,4,1]
+# ans_07  = [5,6,4,3]
+# ans_07x = [5,4,6,3]
+# ans_08  = [5,3,4,5]
+# ans_08x = [5,4,3,5]
+
+# Answers for random question
+LEVEL_ANSWERS = {
+    '1a': [2,1,1,1], '1b': [2,1,1,2], '1c': [1,1,1,2], '1d': [1,2,2,1],
+    '2a': [2,1,6,1], '2b': [3,2,1,2], '2c': [2,2,5,6], '2d': [6,2,2,6],
+    '3a': [3,5,1,1], '3b': [1,5,1,6], '3c': [2,3,4,1], '3d': [6,5,3,4],
+    '4a': [6,2,1,6], '4b': [3,2,2,5], '4c': [1,5,3,1], '4d': [4,2,2,6],
+    '5a': [6,3,5,4], '5b': [5,4,6,3], '5c': [3,5,6,4], '5d': [4,4,6,6],
+    '6a': [1,4,3,1], '6b': [6,1,5,5], '6c': [5,1,1,4], '6d': [5,4,4,5],
+    '7a': [4,5,5,5], '7b': [4,5,5,6], '7c': [2,5,1,5], '7d': [1,2,3,6],
+    '8a': [6,5,6,3], '8b': [6,3,4,2], '8c': [5,6,3,5], '8d': [3,6,5,4],
+} 
 
 grasp_pose = [0,0,0,0,0,0,0]
 
@@ -539,7 +576,10 @@ class TimeIn(customtkinter.CTk):
         #SpeakTextG("左手または利き手と反対の手で操作してください。")
         #SpeakTextG("準備ができたらスタートボタンを押してください。")
 
-    
+    def get_random_variant(self, level):
+        """Get a random variant (a-d) for the specified level."""
+        variants = ['a', 'b', 'c', 'd']
+        return f"{level}{random.choice(variants)}"
 
     def button_0_callback(self):
 
@@ -557,7 +597,9 @@ class TimeIn(customtkinter.CTk):
         IMAGE_WIDTH = 525 #650
         IMAGE_HEIGHT = 525 #650
         # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
-        self.image = customtkinter.CTkImage(light_image=Image.open(task_01), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+        variant = self.get_random_variant(self.current_question)
+        self.current_variant = variant
+        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
         self.label.grid(column=0, row=0)
 
@@ -817,8 +859,8 @@ class TimeIn(customtkinter.CTk):
                 for i in range(len(sort_index)):
                     box_design_sort.append(box_design[sort_index[i]])
 
-                    
-                if self.current_question == 1 and box_design_sort == ans_01:
+                current_answer = LEVEL_ANSWERS.get(self.current_variant, [])    
+                if self.current_question == 1 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_01)] = 0
                     test_label += img_01
@@ -852,11 +894,14 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        self.image = customtkinter.CTkImage(light_image=Image.open(task_02), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.current_question = 2
+                        variant = self.get_random_variant(self.current_question)
+                        self.current_variant = variant
+                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 2
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_01 = False
@@ -888,7 +933,7 @@ class TimeIn(customtkinter.CTk):
                             SpeakTextG("Give your best.")
                     """
 
-                elif self.current_question == 2 and box_design_sort == ans_02:
+                elif self.current_question == 2 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_02)] = 0
                     test_label += img_02
@@ -922,11 +967,14 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        self.image = customtkinter.CTkImage(light_image=Image.open(task_03), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.current_question = 3
+                        variant = self.get_random_variant(self.current_question)
+                        self.current_variant = variant
+                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 3
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_02 = False
@@ -958,7 +1006,7 @@ class TimeIn(customtkinter.CTk):
                             SpeakTextG("Give your best.")
                     """
                 
-                elif self.current_question == 3 and box_design_sort == ans_03:
+                elif self.current_question == 3 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_03)] = 0
                     test_label += img_03
@@ -992,11 +1040,14 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        self.image = customtkinter.CTkImage(light_image=Image.open(task_04), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.current_question = 4
+                        variant = self.get_random_variant(self.current_question)
+                        self.current_variant = variant
+                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 4
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_03 = False
@@ -1028,7 +1079,7 @@ class TimeIn(customtkinter.CTk):
                             SpeakTextG("Give your best.")
                     """    
 
-                elif self.current_question == 4 and box_design_sort == ans_04:
+                elif self.current_question == 4 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_04)] = 0
                     test_label += img_04
@@ -1062,11 +1113,14 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        self.image = customtkinter.CTkImage(light_image=Image.open(task_05), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.current_question = 5
+                        variant = self.get_random_variant(self.current_question)
+                        self.current_variant = variant
+                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 5
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_04 = False
@@ -1099,7 +1153,7 @@ class TimeIn(customtkinter.CTk):
                     """
 
 
-                elif self.current_question == 5 and box_design_sort == ans_05:
+                elif self.current_question == 5 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_05)] = 0
                     test_label += img_05
@@ -1133,11 +1187,14 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        self.image = customtkinter.CTkImage(light_image=Image.open(task_06), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.current_question = 6
+                        variant = self.get_random_variant(self.current_question)
+                        self.current_variant = variant
+                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 6
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_05 = False
@@ -1170,7 +1227,7 @@ class TimeIn(customtkinter.CTk):
                     """
 
 
-                elif self.current_question == 6 and box_design_sort == ans_06:
+                elif self.current_question == 6 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_06)] = 0
                     test_label += img_06
@@ -1204,11 +1261,14 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        self.image = customtkinter.CTkImage(light_image=Image.open(task_07), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.current_question = 7
+                        variant = self.get_random_variant(self.current_question)
+                        self.current_variant = variant
+                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 7
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_06 = False
@@ -1240,7 +1300,7 @@ class TimeIn(customtkinter.CTk):
                             SpeakTextG("Give your best.")
                     """
 
-                elif self.current_question == 7 and box_design_sort == ans_07:
+                elif self.current_question == 7 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_07)] = 0
                     test_label += img_07
@@ -1274,11 +1334,14 @@ class TimeIn(customtkinter.CTk):
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
-                        self.image = customtkinter.CTkImage(light_image=Image.open(task_08), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
+                        self.current_question = 8
+                        variant = self.get_random_variant(self.current_question)
+                        self.current_variant = variant
+                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
                         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
                         self.label.grid(column=0, row=0)
 
-                        self.current_question = 8
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_07 = False
@@ -1310,7 +1373,7 @@ class TimeIn(customtkinter.CTk):
                             SpeakTextG("Give your best.")
                     """
 
-                elif self.current_question == 8 and box_design_sort == ans_08:
+                elif self.current_question == 8 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_08)] = 0
                     test_label += img_08
