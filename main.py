@@ -23,8 +23,6 @@ import torch
 print("GPU CUDA is Available : " + str(torch.cuda.is_available()))
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Load Model Yolo Object Detection
-import os
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'exp7', 'weights', 'best.pt')
@@ -114,42 +112,53 @@ ret_img_09, mask_img_09 = cv2.threshold(gray_img_09, 1, 255, cv2.THRESH_BINARY)
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Connect to Database Server 
   
-""" 
-# MySQL Setup
-import mysql.connector
-from mysql.connector import Error
+# PostgreSQL Setup
+import psycopg2
+from psycopg2 import sql
+from dotenv import load_dotenv
+from pathlib import Path
 
-try:
+def get_db_connection():
+    """Create and return a PostgreSQL database connection using environment variables."""
+    try:
+        # Load environment variables from .env file
+        env_path = Path('.') / '.env'
+        load_dotenv(dotenv_path=env_path)
+        
+        # Get database configuration from environment variables
+        db_config = {
+            'dbname': os.getenv('DB_DATABASE'),
+            'user': os.getenv('DB_USERNAME'),
+            'password': os.getenv('DB_PASSWORD'),
+            'host': os.getenv('DB_HOST'),
+            'port': os.getenv('DB_PORT')
+        }
+        
+        # Establish connection
+        conn = psycopg2.connect(**db_config)
+        conn.autocommit = True
+        
+        # Set timezone to UTC+9 (Japan Standard Time)
+        with conn.cursor() as cursor:
+            cursor.execute("SET timezone = 'Asia/Tokyo';")
+            
+        print(">>> PostgreSQL database connected successfully.")
+        print(">>> Timezone set to Asia/Tokyo (UTC+9)")
+        return conn
+        
+    except Exception as e:
+        print(">>> Error connecting to PostgreSQL database:")
+        print(f"Error: {e}")
+        return None
 
-    # mydb = mysql.connector.connect(
-    #    host = "localhost",
-    #    user = "root",                   
-    #    password = "",
-    #    database = "demo"                    
-    #)
-    
-    mydb = mysql.connector.connect(
-        host = "database-ranking.cwtvfmjokt9c.us-west-1.rds.amazonaws.com",     #"192.168.0.41",
-        user = "admin",                                                         #"root",kubotalab                     
-        password = "mobimobi",
-        database = "sushitech_schema"                                           #"sushitech_demo"                      
-    )
-    
-    mycursor = mydb.cursor()
-    sql = "SET time_zone = '+09:00';"
-    mycursor.execute(sql)
-    mydb.commit()
-    print(">>> Database server connected.")
-    print(">>> Time has been set to UTC+9:00")   
-
-except Error as e:
-    print(">>> Database server not connected.")    
-    print("Error:", e)
-    #mydb.rollback()
-
-""" 
-
-
+# Example usage:
+# conn = get_db_connection()
+# if conn:
+#     with conn.cursor() as cursor:
+#         cursor.execute("SELECT version();")
+#         db_version = cursor.fetchone()
+#         print(f"PostgreSQL database version: {db_version[0]}")
+#     conn.close()
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Global Parameter
@@ -1355,71 +1364,6 @@ class TimeIn(customtkinter.CTk):
                         print("COGNITIVE_AGE : " + str(self.cognitive_age_list))
                         print("-------------------------------------------")
 
-                        # Data transfered from the iPad Controller
-
-                        # self.nick_name 			= "'" + str( self.nick_name)       + "'" 		# nick_name
-                        # self.gender_code 		= "'" + str( self.gender_code)		+ "'" 		# male
-                        # self.age_range_code		= "'" + str( self.age_range_code)	+ "'" 		# class
-                        # time_average			= "'" + str( self.timer_task_avg) + "'"         # seconds
-                        # estimate_cognitive_age 	= "'" + str( cognitive_age_avg) + "'"           # years
-
-                        # ------------------
-                        
-                        """  
-                        try : 	
-                            sql = "INSERT INTO block_design_test (date, time, nick_name, gender_code, age_range_code, time_average, estimate_cognitive_age) VALUES (curdate(),curtime(),{},{},{},{},{})".format(self.nick_name, self.gender_code, self.age_range_code, time_average, estimate_cognitive_age)
-
-                            mycursor.execute(sql)
-                            mydb.commit()
-
-                        except Error as e:
-                            print("Error:", e)
-                            mydb.rollback()
-
-
-                        # finally:
-                        if (mydb.is_connected()):
-                            mydb.close()
-                            mycursor.close()
-                            print("MySQL connection is closed.")
-                        
-                        """
-
-                        # ------------------
-                        """
-                        print(">>> Connecting Server ...")
-
-                        HOST = "192.168.0.37" 
-                        PORT = 8081
-                        data_sent = b"00317020500"
-
-                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                            try:
-                                s.connect((HOST, PORT))
-                                s.sendall(data_sent)
-                                block_ack = s.recv(1024)
-                                str_block_ack = block_ack.decode('utf-8')
-                                #print("The data was successfully sent:" + str_block_ack)
-                            except:
-                                print("The data has not send yet.")
-                        """
-
-
-                        # import requests
-                        # import json
-
-                        # url_A = 'http://54.250.108.126/getConfig.php?configKey=person_id'
-                        # x = requests.post(url_A)
-                        # data_server = x.text
-                        # parsed_data = json.loads(data_server)
-                        # value = parsed_data['value']
-
-                        # url_B = 'http://54.250.108.126/getPerson.php?person_id=' + str(value)
-                        # x = requests.post(url_B)
-                        # data_server = x.text
-                        # parsed_data = json.loads(data_server)
-                        # value = parsed_data["value"]["age"]
-
                         age_real = int(self.age_range_code)
                         age_cog = cognitive_age_avg
 
@@ -1429,11 +1373,6 @@ class TimeIn(customtkinter.CTk):
                             visuo_spatial = 100 
                         else:
                             visuo_spatial = 100 - (age_cog-age_real)
-
-                        # url_C = 'http://54.250.108.126/updatePersonScore.php'
-                        # myobj = {'scoreKey':'visuo_spatial', 'scoreValue': visuo_spatial}
-                        # x = requests.post(url_C, json = myobj)
-
 
                         print("Your name is " + self.nick_name)
                         print("Your gender is " + self.gender_code)
@@ -1452,13 +1391,68 @@ class TimeIn(customtkinter.CTk):
 
                         time.sleep(3)
 
-                        # url_D = 'http://54.250.108.126/setConfig.php'
-                        # myobj = {'configKey':'gameState', 'configValue': 4023}
-                        # x = requests.post(url_D, json = myobj)
-
-                        # print(x.ok)
-                        # print(x.text)
-
+                        # Save results to PostgreSQL database
+                        try:
+                            conn = get_db_connection()
+                            if conn:
+                                with conn.cursor() as cursor:
+                                    # Prepare the SQL query with parameterized values
+                                    insert_query = """
+                                    INSERT INTO bdt.participant_data (
+                                        name, 
+                                        real_age, 
+                                        gender, 
+                                        estimated_cognitive_age, 
+                                        cognitive_fitness, 
+                                        avg_time_all,
+                                        avg_time_1,
+                                        avg_time_2,
+                                        avg_time_3,
+                                        avg_time_4,
+                                        avg_time_5,
+                                        avg_time_6,
+                                        avg_time_7,
+                                        avg_time_8
+                                    ) VALUES (
+                                        %s, %s, %s, %s, %s, %s,
+                                        %s, %s, %s, %s, %s, %s, %s, %s
+                                    )
+                                    """
+                                    
+                                    # Prepare the values tuple
+                                    values = (
+                                        self.nick_name,                      # name
+                                        int(self.age_range_code),           # real_age
+                                        self.gender_code,                   # gender
+                                        int(age_cog),                       # estimated_cognitive_age
+                                        f"{visuo_spatial}%",                # cognitive_fitness
+                                        float(self.timer_task_avg),         # avg_time_all
+                                        float(self.timer_task_all[0]) if len(self.timer_task_all) > 0 else None,  # avg_time_1
+                                        float(self.timer_task_all[1]) if len(self.timer_task_all) > 1 else None,  # avg_time_2
+                                        float(self.timer_task_all[2]) if len(self.timer_task_all) > 2 else None,  # avg_time_3
+                                        float(self.timer_task_all[3]) if len(self.timer_task_all) > 3 else None,  # avg_time_4
+                                        float(self.timer_task_all[4]) if len(self.timer_task_all) > 4 else None,  # avg_time_5
+                                        float(self.timer_task_all[5]) if len(self.timer_task_all) > 5 else None,  # avg_time_6
+                                        float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else None,  # avg_time_7
+                                        float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
+                                    )
+                                    
+                                    # Execute the query
+                                    cursor.execute(insert_query, values)
+                                    conn.commit()
+                                    print(">>> Successfully saved participant data to database")
+                                
+                                # Close the connection
+                                conn.close()
+                            
+                        except Exception as e:
+                            print(">>> Error saving to database:")
+                            print(f"Error: {e}")
+                            if 'conn' in locals():
+                                conn.rollback()
+                        finally:
+                            if 'conn' in locals() and conn is not None:
+                                conn.close()
 
                         #if cognitive_age_avg <= 30:
                         #    SpeakTextG("あなたの推定認知年齢は 30 歳未満です")
