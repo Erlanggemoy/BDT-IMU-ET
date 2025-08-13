@@ -162,12 +162,12 @@ def get_db_connection():
         conn = psycopg2.connect(**db_config)
         conn.autocommit = True
         
-        # Set timezone to UTC+9 (Japan Standard Time)
+        # Set timezone to UTC+7 (Western Indonesia Time)
         with conn.cursor() as cursor:
-            cursor.execute("SET timezone = 'Asia/Tokyo';")
+            cursor.execute("SET timezone = 'Asia/Jakarta';")
             
         print(">>> PostgreSQL database connected successfully.")
-        print(">>> Timezone set to Asia/Tokyo (UTC+9)")
+        print(">>> Timezone set to Asia/Jakarta (UTC+7)")
         return conn
         
     except Exception as e:
