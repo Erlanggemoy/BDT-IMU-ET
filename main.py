@@ -1459,29 +1459,20 @@ class TimeIn(customtkinter.CTk):
                             conn = get_db_connection()
                             if conn:
                                 with conn.cursor() as cursor:
-                                    # Prepare the SQL query with parameterized values
-                                    insert_query = """
-                                    INSERT INTO bdt.participant_data (
-                                        name, 
-                                        real_age, 
-                                        gender, 
-                                        estimated_cognitive_age, 
-                                        cognitive_fitness, 
-                                        avg_time_all,
-                                        avg_time_1,
-                                        avg_time_2,
-                                        avg_time_3,
-                                        avg_time_4,
-                                        avg_time_5,
-                                        avg_time_6,
-                                        avg_time_7,
-                                        avg_time_8
-                                    ) VALUES (
-                                        %s, %s, %s, %s, %s, %s,
-                                        %s, %s, %s, %s, %s, %s, %s, %s
-                                    )
+                                    # First, check if participant exists (case-insensitive name match)
+                                    check_query = """
+                                    SELECT id FROM bdt.participant_data 
+                                    WHERE LOWER(name) = LOWER(%s) 
+                                    AND real_age = %s 
+                                    AND gender = %s
                                     """
-                                    
+                                    cursor.execute(check_query, (
+                                        self.nick_name,
+                                        int(self.age_range_code),
+                                        self.gender_code
+                                    ))
+                                    participant_exists = cursor.fetchone()
+
                                     # Prepare the values tuple
                                     values = (
                                         self.nick_name,                      # name
@@ -1499,15 +1490,62 @@ class TimeIn(customtkinter.CTk):
                                         float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else None,  # avg_time_7
                                         float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
                                     )
+
+                                    if participant_exists:
+                                        # Update existing record
+                                        update_query = """
+                                        UPDATE bdt.participant_data 
+                                        SET 
+                                            estimated_cognitive_age = %s,
+                                            cognitive_fitness = %s,
+                                            avg_time_all = %s,
+                                            avg_time_1 = %s,
+                                            avg_time_2 = %s,
+                                            avg_time_3 = %s,
+                                            avg_time_4 = %s,
+                                            avg_time_5 = %s,
+                                            avg_time_6 = %s,
+                                            avg_time_7 = %s,
+                                            avg_time_8 = %s
+                                        WHERE LOWER(name) = LOWER(%s) 
+                                        AND real_age = %s 
+                                        AND gender = %s
+                                        """
+                                        # Reorder values for update (move name, age, gender to the end)
+                                        update_values = values[3:] + (values[0], values[1], values[2])
+                                        cursor.execute(update_query, update_values)
+                                        print(">>> Successfully updated existing participant data in database")
+                                    else:
+                                        # Insert new record
+                                        insert_query = """
+                                        INSERT INTO bdt.participant_data (
+                                            name, 
+                                            real_age, 
+                                            gender, 
+                                            estimated_cognitive_age, 
+                                            cognitive_fitness, 
+                                            avg_time_all,
+                                            avg_time_1,
+                                            avg_time_2,
+                                            avg_time_3,
+                                            avg_time_4,
+                                            avg_time_5,
+                                            avg_time_6,
+                                            avg_time_7,
+                                            avg_time_8
+                                        ) VALUES (
+                                            %s, %s, %s, %s, %s, %s,
+                                            %s, %s, %s, %s, %s, %s, %s, %s
+                                        )
+                                        """
+                                        cursor.execute(insert_query, values)
+                                        print(">>> Successfully saved new participant data to database")
                                     
-                                    # Execute the query
-                                    cursor.execute(insert_query, values)
                                     conn.commit()
-                                    print(">>> Successfully saved participant data to database")
                                 
                                 # Close the connection
                                 conn.close()
-                            
+
                         except Exception as e:
                             print(">>> Error saving to database:")
                             print(f"Error: {e}")
