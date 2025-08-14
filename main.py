@@ -1168,7 +1168,7 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_05))
 
                         print ("TASK 5 COMPLETED in " + str(self.timer_task_05) +" seconds")
-                        SpeakTextG("問題 5 は  " + str(int(self.timer_task_05)) +" 秒できました。")
+                        SpeakTextG("問題 5 は  " + str(int(self.timer_task_05)) +" 秒で できました。")
 
                         if int(self.timer_task_05) < 10:
                             SpeakTextG("さいこうだよ.")
@@ -1242,7 +1242,7 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_06))
 
                         print ("TASK 6 COMPLETED in " + str(self.timer_task_06) +" seconds")
-                        SpeakTextG("問題 6 は  " + str(int(self.timer_task_06)) +" 秒できました。")
+                        SpeakTextG("問題 6 は  " + str(int(self.timer_task_06)) +" 秒で できました。")
 
                         if int(self.timer_task_06) < 10:
                             SpeakTextG("さいこうだよ.")
@@ -1388,7 +1388,7 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_08))
 
                         print ("TASK 8 COMPLETED in " + str(self.timer_task_08) +" seconds")
-                        SpeakTextG("問題 8 は  " + str(int(self.timer_task_08)) +" 秒できました。")
+                        SpeakTextG("問題 8 は  " + str(int(self.timer_task_08)) +" 秒で できました。")
 
                         if int(self.timer_task_08) < 10:
                             SpeakTextG("さいこうだよ.")
