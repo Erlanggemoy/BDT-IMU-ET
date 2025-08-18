@@ -682,6 +682,7 @@ class TimeIn(customtkinter.CTk):
 
         if nick_name:  # Only proceed if user provided input
             app = TimeIn()
+            app.after(0, lambda:app.state('zoomed'))
             app.mainloop()
 
     # code for video streaming
