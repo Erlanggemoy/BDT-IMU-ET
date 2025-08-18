@@ -1466,13 +1466,14 @@ class TimeIn(customtkinter.CTk):
                                     WHERE LOWER(name) = LOWER(%s) 
                                     AND real_age = %s 
                                     AND gender = %s
+                                    LIMIT 1
                                     """
                                     cursor.execute(check_query, (
                                         self.nick_name,
                                         int(self.age_range_code),
                                         self.gender_code
                                     ))
-                                    participant_exists = cursor.fetchone()
+                                    participant = cursor.fetchone()
 
                                     # Prepare the values tuple
                                     values = (
@@ -1492,8 +1493,8 @@ class TimeIn(customtkinter.CTk):
                                         float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
                                     )
 
-                                    if participant_exists:
-                                        # Update existing record
+                                    if participant:
+                                        # Update existing record in participant_data
                                         update_query = """
                                         UPDATE bdt.participant_data 
                                         SET 
@@ -1507,40 +1508,63 @@ class TimeIn(customtkinter.CTk):
                                             avg_time_5 = %s,
                                             avg_time_6 = %s,
                                             avg_time_7 = %s,
-                                            avg_time_8 = %s
-                                        WHERE LOWER(name) = LOWER(%s) 
-                                        AND real_age = %s 
-                                        AND gender = %s
+                                            avg_time_8 = %s,
+                                            updated_at = CURRENT_TIMESTAMP
+                                        WHERE id = %s
+                                        RETURNING id, updated_at
                                         """
-                                        # Reorder values for update (move name, age, gender to the end)
-                                        update_values = values[3:] + (values[0], values[1], values[2])
+                                        # Reorder values for update (exclude name, age, gender and add id at the end)
+                                        update_values = values[3:] + (participant[0],)
                                         cursor.execute(update_query, update_values)
+                                        updated_participant = cursor.fetchone()
                                         print(">>> Successfully updated existing participant data in database")
-                                    else:
-                                        # Insert new record
-                                        insert_query = """
-                                        INSERT INTO bdt.participant_data (
-                                            name, 
-                                            real_age, 
-                                            gender, 
-                                            estimated_cognitive_age, 
-                                            cognitive_fitness, 
-                                            avg_time_all,
-                                            avg_time_1,
-                                            avg_time_2,
-                                            avg_time_3,
-                                            avg_time_4,
-                                            avg_time_5,
-                                            avg_time_6,
-                                            avg_time_7,
-                                            avg_time_8
+
+                                        # Insert history record with the original created_at
+                                        history_query = """
+                                        INSERT INTO bdt.participant_data_history (
+                                            name, real_age, gender, estimated_cognitive_age, 
+                                            cognitive_fitness, avg_time_all, avg_time_1, 
+                                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                                            avg_time_6, avg_time_7, avg_time_8, created_at
                                         ) VALUES (
-                                            %s, %s, %s, %s, %s, %s,
-                                            %s, %s, %s, %s, %s, %s, %s, %s
+                                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                                         )
                                         """
+                                        history_values = values + (updated_participant[1],) # Use the same updated_at
+                                        cursor.execute(history_query, history_values)
+                                        print(">>> Added history record for updated participant")
+
+                                    else:
+                                        # Insert new record into participant_data
+                                        insert_query = """
+                                        INSERT INTO bdt.participant_data (
+                                            name, real_age, gender, estimated_cognitive_age, 
+                                            cognitive_fitness, avg_time_all, avg_time_1, 
+                                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                                            avg_time_6, avg_time_7, avg_time_8, created_at
+                                        ) VALUES (
+                                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
+                                        )
+                                        RETURNING id, created_at
+                                        """
                                         cursor.execute(insert_query, values)
+                                        new_participant = cursor.fetchone()
                                         print(">>> Successfully saved new participant data to database")
+
+                                        # Insert the same record into history
+                                        history_query = """
+                                        INSERT INTO bdt.participant_data_history (
+                                            name, real_age, gender, estimated_cognitive_age, 
+                                            cognitive_fitness, avg_time_all, avg_time_1, 
+                                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                                            avg_time_6, avg_time_7, avg_time_8, created_at
+                                        ) VALUES (
+                                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                                        )
+                                        """
+                                        history_values = values + (new_participant[1],)  # Use the same created_at
+                                        cursor.execute(history_query, history_values)
+                                        print(">>> Added initial history record for new participant")
                                     
                                     conn.commit()
                                 
