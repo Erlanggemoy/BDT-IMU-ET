@@ -305,6 +305,14 @@ def SpeakTextG(text):
 
 #SpeakTextG("こんにちは、お元気ですか？")
 
+import mediapipe as mp
+
+mp_drawing = mp.solutions.drawing_utils
+mp_hands = mp.solutions.hands
+
+landmark_style = mp_drawing.DrawingSpec(color=(0,0,255), thickness=3, circle_radius=3)
+connection_style = mp_drawing.DrawingSpec(color=(0,0,255), thickness=4)
+
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Setup GUI Input 
@@ -591,7 +599,7 @@ class TimeIn(customtkinter.CTk):
         SpeakTextG("これから 絵合わせゲームで あなたの認知年齢を みてみましょう")
         SpeakTextG("3, 2, 1, スタート")
         print("START")
-        self.start_task = time.time()
+        #self.start_task = time.time()
         
 
         IMAGE_WIDTH = 525 #650
@@ -603,7 +611,7 @@ class TimeIn(customtkinter.CTk):
         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
         self.label.grid(column=0, row=0)
 
-        #self.start_task = time.time()
+        self.start_task = time.time()
         self.streaming()
 
 
@@ -1638,6 +1646,16 @@ class TimeIn(customtkinter.CTk):
 
 
         # --------------------------------------------------------------------------- End Process
+
+        with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence = 0.5 ) as hands:
+
+            #frame = cv2.flip(frame, 1)
+            frame_rgb = cv2.cvtColor(frame, 1)      
+            hand_result = hands.process(frame_rgb)
+
+            if hand_result.multi_hand_landmarks:
+                for hand_landmarks in hand_result.multi_hand_landmarks:
+                    mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_style, connection_style)
 
         img = Image.fromarray(frame)
         ImgTks = ImageTk.PhotoImage(image=img)
