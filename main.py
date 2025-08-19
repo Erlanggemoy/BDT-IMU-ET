@@ -507,14 +507,43 @@ class TimeIn(customtkinter.CTk):
 
         # --------------------------------------------------- Design
 
-        self.design_frame_0 = TextFrame(self, "Block Design")
-        self.design_frame_0.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
+        # Left side container for timer and design
+        self.left_side = customtkinter.CTkFrame(self)
+        self.left_side.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        self.left_side.grid_rowconfigure(1, weight=1)
+        self.left_side.grid_columnconfigure(1, weight=1)
 
-        self.design_frame_1 = ImageFrame(self, "")
-        self.design_frame_1.grid(row=1, column=0, padx=0, pady=0, sticky="nsew") # row=1
+        # Timer frame on the left side
+        self.timer_frame = customtkinter.CTkFrame(self.left_side, corner_radius=6, fg_color="gray30", width=150)
+        self.timer_frame.grid(row=0, column=0, rowspan=2, padx=(0, 10), pady=10, sticky="ns")
+        self.timer_frame.pack_propagate(False)
+        
+        # Timer label with larger font
+        self.timer_label = customtkinter.CTkLabel(
+            self.timer_frame, 
+            text="00:00.00", 
+            font=("Helvetica", 35, "bold"),
+            text_color="white"
+        )
+        self.timer_label.pack(expand=True, fill="both")
+        self.timer_running = False
+        self.start_time = 0
 
-        IMAGE_WIDTH = 525 #650
-        IMAGE_HEIGHT = 525 #650
+        # Design frames next to the timer
+        self.design_frame_0 = TextFrame(self.left_side, "Block Design")
+        self.design_frame_0.grid(row=0, column=1, padx=0, pady=0, sticky="nsew")
+
+        self.design_frame_1 = ImageFrame(self.left_side, "")
+        self.design_frame_1.grid(row=1, column=1, padx=0, pady=0, sticky="nsew")
+
+        # Adjust the main window's grid configuration
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)  # Left side (timer + design)
+        self.grid_columnconfigure(1, weight=1)  # Right side (camera)
+
+        # Load the initial image
+        IMAGE_WIDTH = 525
+        IMAGE_HEIGHT = 525
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg')
         self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
         self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
@@ -614,6 +643,9 @@ class TimeIn(customtkinter.CTk):
         self.start_task = time.time()
         self.streaming()
 
+        # Reset and start the timer
+        self.reset_timer()
+        self.start_timer()
 
     #def button_1_callback(self):
 
@@ -692,6 +724,28 @@ class TimeIn(customtkinter.CTk):
             app = TimeIn()
             app.after(0, lambda:app.state('zoomed'))
             app.mainloop()
+
+    def update_timer(self):
+        if self.timer_running:
+            elapsed = time.time() - self.start_time
+            minutes = int(elapsed // 60)
+            seconds = int(elapsed % 60)
+            milliseconds = int((elapsed % 1) * 100)
+            self.timer_label.configure(text=f"{minutes:02d}:{seconds:02d}.{milliseconds:02d}")
+            self.after(10, self.update_timer)
+
+    def start_timer(self):
+        if not self.timer_running:
+            self.start_time = time.time()
+            self.timer_running = True
+            self.update_timer()
+
+    def stop_timer(self):
+        self.timer_running = False
+
+    def reset_timer(self):
+        self.timer_label.configure(text="00:00.00")
+        self.timer_running = False
 
     # code for video streaming
     def streaming(self):
@@ -915,6 +969,9 @@ class TimeIn(customtkinter.CTk):
                         self.show_current_level_button(self.current_question)
                         self.task_flag_01 = False
                         self.start_task = time.time()
+                        # Reset and start the timer
+                        self.reset_timer()
+                        self.start_timer()
 
                     # Detect Thumb
                     """
@@ -988,6 +1045,9 @@ class TimeIn(customtkinter.CTk):
                         self.show_current_level_button(self.current_question)
                         self.task_flag_02 = False
                         self.start_task = time.time()
+                        # Reset and start the timer
+                        self.reset_timer()
+                        self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1061,6 +1121,9 @@ class TimeIn(customtkinter.CTk):
                         self.show_current_level_button(self.current_question)
                         self.task_flag_03 = False
                         self.start_task = time.time()
+                        # Reset and start the timer
+                        self.reset_timer()
+                        self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1134,6 +1197,9 @@ class TimeIn(customtkinter.CTk):
                         self.show_current_level_button(self.current_question)
                         self.task_flag_04 = False
                         self.start_task = time.time()
+                        # Reset and start the timer
+                        self.reset_timer()
+                        self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1208,6 +1274,9 @@ class TimeIn(customtkinter.CTk):
                         self.show_current_level_button(self.current_question)
                         self.task_flag_05 = False
                         self.start_task = time.time()
+                        # Reset and start the timer
+                        self.reset_timer()
+                        self.start_timer()
                     
                     # Detect Thumb
                     """
@@ -1282,6 +1351,9 @@ class TimeIn(customtkinter.CTk):
                         self.show_current_level_button(self.current_question)
                         self.task_flag_06 = False
                         self.start_task = time.time()
+                        # Reset and start the timer
+                        self.reset_timer()
+                        self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1355,6 +1427,9 @@ class TimeIn(customtkinter.CTk):
                         self.show_current_level_button(self.current_question)
                         self.task_flag_07 = False
                         self.start_task = time.time()
+                        # Reset and start the timer
+                        self.reset_timer()
+                        self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1411,6 +1486,10 @@ class TimeIn(customtkinter.CTk):
                             SpeakTextG("ナイス.")
                         else:
                             SpeakTextG("がんばったね.")
+
+                        # Stop the timer
+                        self.reset_timer()
+                        self.stop_timer()  
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
