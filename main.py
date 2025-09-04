@@ -501,20 +501,38 @@ class TimeIn(customtkinter.CTk):
         self.title("Block Design Test")
 
         self.geometry("960x560")
-        self.grid_columnconfigure((0, 1), weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        
+        # Configure main grid with different weights (4:1 ratio for top:bottom)
+        self.grid_rowconfigure(0, weight=4)  # Top part (larger portion)
+        self.grid_rowconfigure(1, weight=1)  # Bottom part (smaller portion)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
 
+        # Create a container for the top half
+        self.top_container = customtkinter.CTkFrame(self)
+        self.top_container.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=(0, 150))  # Added bottom padding
+        self.top_container.grid_columnconfigure(0, weight=1)
+        self.top_container.grid_columnconfigure(1, weight=1)
+        self.top_container.grid_rowconfigure(0, weight=1)
+        self.top_container.grid_rowconfigure(1, weight=0)  # For the button row
 
-        # --------------------------------------------------- Design
+        # Create a container for the content (above the button)
+        self.content_container = customtkinter.CTkFrame(self.top_container)
+        self.content_container.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        self.content_container.grid_columnconfigure(0, weight=1)
+        self.content_container.grid_columnconfigure(1, weight=1)
+        self.content_container.grid_rowconfigure(0, weight=1)
+
+        # --------------------------------------------------- Design (in top half)
 
         # Left side container for timer and design
-        self.left_side = customtkinter.CTkFrame(self)
-        self.left_side.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        self.left_side = customtkinter.CTkFrame(self.content_container)
+        self.left_side.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         self.left_side.grid_rowconfigure(1, weight=1)
         self.left_side.grid_columnconfigure(1, weight=1)
 
         # Timer frame on the left side
-        self.timer_frame = customtkinter.CTkFrame(self.left_side, corner_radius=6, fg_color="gray30", width=150)
+        self.timer_frame = customtkinter.CTkFrame(self.left_side, corner_radius=6, fg_color="gray30", width=120)
         self.timer_frame.grid(row=0, column=0, rowspan=2, padx=(0, 10), pady=10, sticky="ns")
         self.timer_frame.pack_propagate(False)
         
@@ -522,7 +540,7 @@ class TimeIn(customtkinter.CTk):
         self.timer_label = customtkinter.CTkLabel(
             self.timer_frame, 
             text="00:00.00", 
-            font=("Helvetica", 35, "bold"),
+            font=("Helvetica", 30, "bold"),
             text_color="white"
         )
         self.timer_label.pack(expand=True, fill="both")
@@ -531,43 +549,52 @@ class TimeIn(customtkinter.CTk):
 
         # Design frames next to the timer
         self.design_frame_0 = TextFrame(self.left_side, "Block Design")
-        self.design_frame_0.grid(row=0, column=1, padx=0, pady=0, sticky="nsew")
+        self.design_frame_0.grid(row=0, column=1, padx=0, pady=(0, 5), sticky="nsew")
 
         self.design_frame_1 = ImageFrame(self.left_side, "")
         self.design_frame_1.grid(row=1, column=1, padx=0, pady=0, sticky="nsew")
+        self.design_frame_1.grid_propagate(False)
 
-        # Adjust the main window's grid configuration
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)  # Left side (timer + design)
-        self.grid_columnconfigure(1, weight=1)  # Right side (camera)
+        # --------------------------------------------------- Camera (in top half)
 
-        # Load the initial image
-        IMAGE_WIDTH = 525
-        IMAGE_HEIGHT = 525
+        self.video_frame_0 = TextFrame(self.content_container, "Upper Table Camera")
+        self.video_frame_0.grid(row=0, column=1, padx=10, pady=0, sticky="nsew")
+        
+        self.video_frame_1 = ImageFrame(self.content_container, "")
+        self.video_frame_1.grid(row=0, column=1, padx=10, pady=(40, 10), sticky="nsew")
+        self.video_frame_1.grid_propagate(False)
+        
+        # Adjust image sizes to fit the frames
+        frame_width = 400  # Adjust based on your needs
+        frame_height = 400  # Adjust based on your needs
+        
+        # Load and resize the initial image
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg')
-        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-        self.label.grid(column=0, row=0)
+        self.image = customtkinter.CTkImage(
+            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+            size=(frame_width, frame_height)
+        )
+        # Create the label once and store it as an instance variable
+        self.image_label = customtkinter.CTkLabel(master=self.design_frame_1, text='')
+        self.image_label.pack(expand=True, fill="both")
+        self.image_label.configure(image=self.image)
 
-        # --------------------------------------------------- Camera
-
-        self.video_frame_0 = TextFrame(self, "Upper Table Camera")
-        self.video_frame_0.grid(row=0, column=1, padx=0, pady=0, sticky="nsew")
-        
-        self.video_frame_1 = ImageFrame(self, "")
-        self.video_frame_1.grid(row=1, column=1, padx=0, pady=0, sticky="nsew") #row=1
-        
+        # Camera label
         self.camera = customtkinter.CTkLabel(self.video_frame_1, text="", anchor="center")
-        self.camera.grid(row=0, column=0, padx=0, pady=0, sticky="nswe")
+        self.camera.pack(expand=True, fill="both")
 
+        # Add the start button in the top container, below the content
+        self.button_0 = customtkinter.CTkButton(
+            self.top_container, 
+            text="スタート (START)", 
+            font=("Helvetica", 30), 
+            command=self.button_0_callback
+        )
+        self.button_0.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky="ew")
 
-        # --------------------------------------------------- Camera
-
-        self.button_0 = customtkinter.CTkButton(self, text="スタート (START)", font=("Helvetica", 30), command=self.button_0_callback)
-        self.button_0.grid(row=2, column=0, columnspan=2, padx=65, pady=65, sticky="nswe") # , column=0, columnspan=2, row=2
-
-        #self.button_1 = customtkinter.CTkButton(self, text="アプリ終了 (EXIT)", font=("Helvetica", 30), command=self.button_1_callback)
-        #self.button_1.grid(row=2, column=1, padx=65, pady=65, sticky="nswe") # , columnspan=2, row=2
+        # Bottom half (empty)
+        self.bottom_container = customtkinter.CTkFrame(self)
+        self.bottom_container.grid(row=1, column=0, columnspan=2, sticky="nsew")
 
         #self.start_zero = time.time()
         #self.start_thumb = time.time()
@@ -620,8 +647,9 @@ class TimeIn(customtkinter.CTk):
 
     def button_0_callback(self):
 
-        # self.state = "disabled"
+        # Hide the start button
         self.button_0.grid_remove()
+        # Show the current level button in the same position
         self.show_current_level_button(self.current_question)
         
         SpeakTextG("こんにちわ")
@@ -631,15 +659,18 @@ class TimeIn(customtkinter.CTk):
         #self.start_task = time.time()
         
 
-        IMAGE_WIDTH = 525 #650
-        IMAGE_HEIGHT = 525 #650
-        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
+        frame_width = 400  # Adjust based on your needs
+        frame_height = 400  # Adjust based on your needs
+        
+        # Load and resize the initial image
         variant = self.get_random_variant(self.current_question)
         self.current_variant = variant
-        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-        self.label.grid(column=0, row=0)
-
+        IMAGE_PATH = LEVEL_PATHS[variant]
+        self.image = customtkinter.CTkImage(
+            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+            size=(frame_width, frame_height)
+        )
+        self.image_label.configure(image=self.image)
         self.start_task = time.time()
         self.streaming()
 
@@ -695,23 +726,23 @@ class TimeIn(customtkinter.CTk):
 
     def show_current_level_button(self, level):
         self.current_level_button = customtkinter.CTkButton(
-            self,
+            self.top_container,
             text="Level " + str(level),
             font=("Helvetica", 30)
         )
         
-        self.current_level_button.grid(row=2, column=0, columnspan=2, padx=65, pady=65, sticky="nswe")
+        self.current_level_button.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky="ew")
     
     def show_retry_button(self):
         self.retry_button = customtkinter.CTkButton(
-            self,
+            self.top_container,
             text="Retry Test",
             font=("Helvetica", 30),
             command=self.retry_test
         )
         
         # Position the retry button in the same place as the start button was
-        self.retry_button.grid(row=2, column=0, columnspan=2, padx=65, pady=65, sticky="nswe")
+        self.retry_button.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky="ew")
 
     def retry_test(self):
         # Reset the application state
@@ -770,9 +801,9 @@ class TimeIn(customtkinter.CTk):
 
         #if len(list_tracked_objects) == 4: #>0
 
-        IMAGE_WIDTH = 525   #650
-        IMAGE_HEIGHT = 525  #650
-
+        frame_width = 400  # Adjust based on your needs
+        frame_height = 400  # Adjust based on your needs
+        
         box_num = 0
         box_face = 0
         box_list = []
@@ -961,10 +992,16 @@ class TimeIn(customtkinter.CTk):
                         variant = self.get_random_variant(self.current_question)
                         self.current_variant = variant
                         current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        frame_width = 400  # Adjust based on your needs
+                        frame_height = 400  # Adjust based on your needs
+        
+                        # Load and resize the initial image
+                        IMAGE_PATH = LEVEL_PATHS[variant]
+                        self.image = customtkinter.CTkImage(
+                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                            size=(frame_width, frame_height)
+                        )
+                        self.image_label.configure(image=self.image)
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_01 = False
@@ -1037,10 +1074,16 @@ class TimeIn(customtkinter.CTk):
                         variant = self.get_random_variant(self.current_question)
                         self.current_variant = variant
                         current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        frame_width = 400  # Adjust based on your needs
+                        frame_height = 400  # Adjust based on your needs
+        
+                        # Load and resize the initial image
+                        IMAGE_PATH = LEVEL_PATHS[variant]
+                        self.image = customtkinter.CTkImage(
+                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                            size=(frame_width, frame_height)
+                        )
+                        self.image_label.configure(image=self.image)
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_02 = False
@@ -1113,10 +1156,16 @@ class TimeIn(customtkinter.CTk):
                         variant = self.get_random_variant(self.current_question)
                         self.current_variant = variant
                         current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        frame_width = 400  # Adjust based on your needs
+                        frame_height = 400  # Adjust based on your needs
+        
+                        # Load and resize the initial image
+                        IMAGE_PATH = LEVEL_PATHS[variant]
+                        self.image = customtkinter.CTkImage(
+                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                            size=(frame_width, frame_height)
+                        )
+                        self.image_label.configure(image=self.image)
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_03 = False
@@ -1189,10 +1238,16 @@ class TimeIn(customtkinter.CTk):
                         variant = self.get_random_variant(self.current_question)
                         self.current_variant = variant
                         current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        frame_width = 400  # Adjust based on your needs
+                        frame_height = 400  # Adjust based on your needs
+        
+                        # Load and resize the initial image
+                        IMAGE_PATH = LEVEL_PATHS[variant]
+                        self.image = customtkinter.CTkImage(
+                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                            size=(frame_width, frame_height)
+                        )
+                        self.image_label.configure(image=self.image)
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_04 = False
@@ -1266,10 +1321,16 @@ class TimeIn(customtkinter.CTk):
                         variant = self.get_random_variant(self.current_question)
                         self.current_variant = variant
                         current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        frame_width = 400  # Adjust based on your needs
+                        frame_height = 400  # Adjust based on your needs
+        
+                        # Load and resize the initial image
+                        IMAGE_PATH = LEVEL_PATHS[variant]
+                        self.image = customtkinter.CTkImage(
+                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                            size=(frame_width, frame_height)
+                        )
+                        self.image_label.configure(image=self.image)
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_05 = False
@@ -1343,10 +1404,16 @@ class TimeIn(customtkinter.CTk):
                         variant = self.get_random_variant(self.current_question)
                         self.current_variant = variant
                         current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        frame_width = 400  # Adjust based on your needs
+                        frame_height = 400  # Adjust based on your needs
+        
+                        # Load and resize the initial image
+                        IMAGE_PATH = LEVEL_PATHS[variant]
+                        self.image = customtkinter.CTkImage(
+                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                            size=(frame_width, frame_height)
+                        )
+                        self.image_label.configure(image=self.image)
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_06 = False
@@ -1419,10 +1486,16 @@ class TimeIn(customtkinter.CTk):
                         variant = self.get_random_variant(self.current_question)
                         self.current_variant = variant
                         current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        self.image = customtkinter.CTkImage(light_image=Image.open(LEVEL_PATHS[variant]), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        frame_width = 400  # Adjust based on your needs
+                        frame_height = 400  # Adjust based on your needs
+        
+                        # Load and resize the initial image
+                        IMAGE_PATH = LEVEL_PATHS[variant]
+                        self.image = customtkinter.CTkImage(
+                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                            size=(frame_width, frame_height)
+                        )
+                        self.image_label.configure(image=self.image)
                         self.current_level_button.grid_remove()
                         self.show_current_level_button(self.current_question)
                         self.task_flag_07 = False
@@ -1688,10 +1761,8 @@ class TimeIn(customtkinter.CTk):
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
                         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg')
-                        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        self.label.grid(column=0, row=0)
-
+                        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(400 , 400))
+                        self.image_label.configure(image=self.image)
                         self.task_flag_08 = False
                         
                         self.show_retry_button()
