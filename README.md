@@ -28,7 +28,16 @@ pip install -r requirements.txt
    ```
 2. Edit file `.env` dan sesuaikan dengan konfigurasi database Anda.
 
-### 4. Setup Library Intel MKL (Windows)
+### 4. Unduh File Berukuran Besar (Opsional)
+
+Jika menggunakan Git LFS untuk file-file berukuran besar, jalankan perintah berikut:
+
+```bash
+git lfs install
+git lfs pull
+```
+
+### 5. Setup Library Intel MKL (Windows)
 
 Untuk pengguna Windows dengan processor Intel:
 1. Salin file `DLL/svml_dispmd.dll` ke folder `C:\Windows\System32\`
