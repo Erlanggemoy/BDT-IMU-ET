@@ -2,6 +2,8 @@ numpy
 opencv-python
 torch
 torchvision
+torchaudio
+gitpython
 customtkinter
 gtts
 pygame
