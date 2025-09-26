@@ -7,6 +7,16 @@ import math
 import time
 import socket
 from text_utils import number_to_words_id
+from dotenv import load_dotenv
+from pathlib import Path
+
+ # Load environment variables from .env file
+env_path = Path('.') / '.env'
+load_dotenv(dotenv_path=env_path)
+        
+
+# Get display mode from environment variable (default to True if not set or invalid)
+DISPLAY_HALF = os.getenv('DISPLAY_HALF', 'true').lower() == 'true'
                                                         
 #
 # \import pyautogui
@@ -140,16 +150,10 @@ ret_img_09, mask_img_09 = cv2.threshold(gray_img_09, 1, 255, cv2.THRESH_BINARY)
 # PostgreSQL Setup
 import psycopg2
 from psycopg2 import sql
-from dotenv import load_dotenv
-from pathlib import Path
 
 def get_db_connection():
     """Create and return a PostgreSQL database connection using environment variables."""
     try:
-        # Load environment variables from .env file
-        env_path = Path('.') / '.env'
-        load_dotenv(dotenv_path=env_path)
-        
         # Get database configuration from environment variables
         db_config = {
             'dbname': os.getenv('DB_DATABASE'),
@@ -503,39 +507,71 @@ class TimeIn(customtkinter.CTk):
         super().__init__()
         self.title("Block Design Test")
 
-        self.geometry("960x560")
+        # Set window size based on display mode
+        if DISPLAY_HALF:
+            self.geometry("960x560")
+        else:
+            self.geometry("1200x800")  # Larger window for full display mode
         
-        # Configure main grid with different weights (4:1 ratio for top:bottom)
-        self.grid_rowconfigure(0, weight=4)  # Top part (larger portion)
-        self.grid_rowconfigure(1, weight=1)  # Bottom part (smaller portion)
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
+        # Configure main grid with different weights based on display mode
+        if DISPLAY_HALF:
+            # Half display mode (4:1 ratio for top:bottom)
+            self.grid_rowconfigure(0, weight=4)  # Top part (larger portion)
+            self.grid_rowconfigure(1, weight=1)  # Bottom part (smaller portion)
+            self.grid_columnconfigure(0, weight=1)
+            self.grid_columnconfigure(1, weight=1)
+            
+            # Create a container for the top half
+            self.top_container = customtkinter.CTkFrame(self)
+            self.top_container.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=(0, 150))
+            self.top_container.grid_columnconfigure(0, weight=1)
+            self.top_container.grid_columnconfigure(1, weight=1)
+            self.top_container.grid_rowconfigure(0, weight=1)
+            self.top_container.grid_rowconfigure(1, weight=0)  # For the button row
+            
+            # Content container for half display
+            self.content_container = customtkinter.CTkFrame(self.top_container)
+            self.content_container.grid(row=0, column=0, columnspan=2, sticky="nsew")
+            self.content_container.grid_columnconfigure(0, weight=1)
+            self.content_container.grid_columnconfigure(1, weight=1)
+            self.content_container.grid_rowconfigure(0, weight=1)
+        else:
+            # Full display mode (use full window)
+            self.grid_rowconfigure(0, weight=1)
+            self.grid_columnconfigure(0, weight=1)
+            self.grid_columnconfigure(1, weight=1)
+            
+            # Main container for full display
+            self.top_container = customtkinter.CTkFrame(self)
+            self.top_container.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+            self.top_container.grid_columnconfigure(0, weight=1)
+            self.top_container.grid_columnconfigure(1, weight=1)
+            self.top_container.grid_rowconfigure(0, weight=1)
+            
+            # Content container for full display
+            self.content_container = customtkinter.CTkFrame(self.top_container)
+            self.content_container.grid(row=0, column=0, columnspan=2, sticky="nsew")
+            self.content_container.grid_columnconfigure(0, weight=1)
+            self.content_container.grid_columnconfigure(1, weight=1)
+            self.content_container.grid_rowconfigure(0, weight=1)
 
-        # Create a container for the top half
-        self.top_container = customtkinter.CTkFrame(self)
-        self.top_container.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=(0, 150))  # Added bottom padding
-        self.top_container.grid_columnconfigure(0, weight=1)
-        self.top_container.grid_columnconfigure(1, weight=1)
-        self.top_container.grid_rowconfigure(0, weight=1)
-        self.top_container.grid_rowconfigure(1, weight=0)  # For the button row
-
-        # Create a container for the content (above the button)
-        self.content_container = customtkinter.CTkFrame(self.top_container)
-        self.content_container.grid(row=0, column=0, columnspan=2, sticky="nsew")
-        self.content_container.grid_columnconfigure(0, weight=1)
-        self.content_container.grid_columnconfigure(1, weight=1)
-        self.content_container.grid_rowconfigure(0, weight=1)
-
-        # --------------------------------------------------- Design (in top half)
+        # --------------------------------------------------- Design Section
 
         # Left side container for timer and design
         self.left_side = customtkinter.CTkFrame(self.content_container)
-        self.left_side.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        if DISPLAY_HALF:
+            self.left_side.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        else:
+            self.left_side.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+            
         self.left_side.grid_rowconfigure(1, weight=1)
         self.left_side.grid_columnconfigure(1, weight=1)
 
         # Timer frame on the left side
-        self.timer_frame = customtkinter.CTkFrame(self.left_side, corner_radius=6, fg_color="gray30", width=120)
+        timer_width = 120 if DISPLAY_HALF else 150
+        timer_font_size = 30 if DISPLAY_HALF else 36
+        
+        self.timer_frame = customtkinter.CTkFrame(self.left_side, corner_radius=6, fg_color="gray30", width=timer_width)
         self.timer_frame.grid(row=0, column=0, rowspan=2, padx=(0, 10), pady=10, sticky="ns")
         self.timer_frame.pack_propagate(False)
         
@@ -543,7 +579,7 @@ class TimeIn(customtkinter.CTk):
         self.timer_label = customtkinter.CTkLabel(
             self.timer_frame, 
             text="00:00.00", 
-            font=("Helvetica", 30, "bold"),
+            font=("Helvetica", timer_font_size, "bold"),
             text_color="white"
         )
         self.timer_label.pack(expand=True, fill="both")
@@ -558,18 +594,25 @@ class TimeIn(customtkinter.CTk):
         self.design_frame_1.grid(row=1, column=1, padx=0, pady=0, sticky="nsew")
         self.design_frame_1.grid_propagate(False)
 
-        # --------------------------------------------------- Camera (in top half)
+        # --------------------------------------------------- Camera Section
 
+        camera_padx = 10 if DISPLAY_HALF else 20
+        camera_pady = (40, 10) if DISPLAY_HALF else (50, 20)
+        
         self.video_frame_0 = TextFrame(self.content_container, "Upper Table Camera")
-        self.video_frame_0.grid(row=0, column=1, padx=10, pady=0, sticky="nsew")
+        self.video_frame_0.grid(row=0, column=1, padx=camera_padx, pady=0, sticky="nsew")
         
         self.video_frame_1 = ImageFrame(self.content_container, "")
-        self.video_frame_1.grid(row=0, column=1, padx=10, pady=(40, 10), sticky="nsew")
+        self.video_frame_1.grid(row=0, column=1, padx=camera_padx, pady=camera_pady, sticky="nsew")
         self.video_frame_1.grid_propagate(False)
         
         # Adjust image sizes to fit the frames
-        frame_width = 400  # Adjust based on your needs
-        frame_height = 400  # Adjust based on your needs
+        if DISPLAY_HALF:
+            frame_width = 400
+            frame_height = 400
+        else:
+            frame_width = 500
+            frame_height = 500
         
         # Load and resize the initial image
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg')
@@ -586,18 +629,26 @@ class TimeIn(customtkinter.CTk):
         self.camera = customtkinter.CTkLabel(self.video_frame_1, text="", anchor="center")
         self.camera.pack(expand=True, fill="both")
 
-        # Add the start button in the top container, below the content
+        # Add the start button
+        button_font_size = 30 if DISPLAY_HALF else 36
+        button_pady = 10 if DISPLAY_HALF else 20
+        
         self.button_0 = customtkinter.CTkButton(
             self.top_container, 
             text="(START)", 
-            font=("Helvetica", 30), 
+            font=("Helvetica", button_font_size), 
             command=self.button_0_callback
         )
-        self.button_0.grid(row=1, column=0, columnspan=2, padx=20, pady=10, sticky="ew")
+        if DISPLAY_HALF:
+            self.button_0.grid(row=1, column=0, columnspan=2, padx=20, pady=button_pady, sticky="ew")
+        else:
+            # In full mode, place the button at the bottom of the left panel
+            self.button_0.grid(row=2, column=0, columnspan=2, padx=20, pady=button_pady, sticky="ew")
 
-        # Bottom half (empty)
-        self.bottom_container = customtkinter.CTkFrame(self)
-        self.bottom_container.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        # Bottom container (only used in half display mode)
+        if DISPLAY_HALF:
+            self.bottom_container = customtkinter.CTkFrame(self)
+            self.bottom_container.grid(row=1, column=0, columnspan=2, sticky="nsew")
 
         #self.start_zero = time.time()
         #self.start_thumb = time.time()
