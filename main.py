@@ -998,12 +998,21 @@ class TimeIn(customtkinter.CTk):
                 ( abs(len_rect[1] - len_rect[3]) < 100) and \
                 ( abs(len_rect[2] - len_rect[3]) < 100):
 
-                # >>>>>>>>>>>>
-                
-                sort_index = sorted(range(len(box_distance)), key=lambda k: box_distance[k])
+                # 1. Gabungkan posisi x, y, dan index asli
+                indexed_positions = [(pos_x[i], pos_y[i], i) for i in range(len(pos_x))]
 
-                for i in range(len(sort_index)):
-                    box_design_sort.append(box_design[sort_index[i]])
+                # 2. Urutkan berdasarkan x untuk memisahkan kelompok kiri dan kanan
+                sorted_by_x = sorted(pos_x)
+                mid_point = (sorted_by_x[1] + sorted_by_x[2]) / 2  # Titik tengah antara x terbesar kedua dan terkecil kedua
+
+                # 3. Urutkan: kelompok kiri (x < mid_point) dulu, lalu kelompok kanan, dalam setiap kelompok urutkan berdasarkan y
+                indexed_positions.sort(key=lambda p: (p[0] >= mid_point, p[1]))
+
+                # 4. Ambil index asli yang sudah terurut
+                sort_index = [idx for (x, y, idx) in indexed_positions]
+
+                # 5. Urutkan box_design berdasarkan index yang sudah diurutkan
+                box_design_sort = [box_design[i] for i in sort_index]
 
                 current_answer = LEVEL_ANSWERS.get(self.current_variant, [])    
                 if self.current_question == 1 and box_design_sort == current_answer:
