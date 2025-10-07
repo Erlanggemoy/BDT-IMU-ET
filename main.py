@@ -268,49 +268,74 @@ age_range_code = 0
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Text to  
 
-from g2p_id import G2P
-from TTS.api import TTS  # dari library Coqui TTS
+# from g2p_id import G2P
+# from TTS.api import TTS  # dari library Coqui TTS
 import sounddevice as sd
+import soundfile as sf
 
-def tts_indo(text):
-    model_path = os.path.join("checkpoint_1260000-inference.pth")
-    config_path = os.path.join("config.json")
-    speakers_file_path = os.path.join("speakers.pth")
-    speaker = "SU-03887"
-    # 1. konversi teks ke fonem
-    g2p = G2P()
-    phoneme_text = g2p(text)
-    # Contoh: “Rumah Agus terbakar.” → “ˈrumah ˈaɡʊs tərˈbakar.”  
-    print(f"Phoneme text: {phoneme_text}")
+def play_audio(wav):
+    """
+    wav: either a filepath (str / Path) or a numpy array of samples.
+    If filepath -> read file with soundfile so we get data and samplerate.
+    """
+    # jika path diberikan, baca file
+    if isinstance(wav, (str, Path)):
+        path = str(wav)
+        # cek ada file
+        if not Path(path).exists():
+            raise FileNotFoundError(f"Audio file not found: {path}")
+        data, samplerate = sf.read(path, dtype='float32')  # data float32 in [-1,1]
+    else:
+        # asumsi sudah array-like
+        data = np.asarray(wav)
+        samplerate = 22050  # default jika pemanggil memang mengirim data langsung
 
-    # 2. Load model (tanpa speaker_idx di konstruktor)
-    tts = TTS(
-        model_path=model_path,
-        config_path=config_path,
-        speakers_file_path=speakers_file_path,
-        progress_bar=False,
-        gpu=False
-    )
+    # pastikan bentuk (frames, channels)
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)
 
-    # Jika model multi-speaker, bisa lihat daftar speaker:
-    # try:
-    #     print("Available speakers:", tts.speakers)
-    # except AttributeError:
-    #     pass
-
-    # panggil tts
-    wav = tts.tts(
-        text=phoneme_text,
-        speaker=speaker
-    )
-    # kemungkinan wav adalah numpy array, dan ada sample rate default dalam config
-    
-    # Temuin sample rate modelnya (bisa di tts.synthesizer.sample_rate atau ada field di tts)
-    sr = tts.synthesizer.output_sample_rate if hasattr(tts, "synthesizer") else 22050  # ganti kalau model lain
-
-    # mainkan audio
-    sd.play(wav, samplerate=sr)
+    sd.play(data, samplerate)
     sd.wait()
+
+# def tts_indo(text):
+#     model_path = os.path.join("checkpoint_1260000-inference.pth")
+#     config_path = os.path.join("config.json")
+#     speakers_file_path = os.path.join("speakers.pth")
+#     speaker = "SU-03887"
+#     # 1. konversi teks ke fonem
+#     g2p = G2P()
+#     phoneme_text = g2p(text)
+#     # Contoh: “Rumah Agus terbakar.” → “ˈrumah ˈaɡʊs tərˈbakar.”  
+#     print(f"Phoneme text: {phoneme_text}")
+
+#     # 2. Load model (tanpa speaker_idx di konstruktor)
+#     tts = TTS(
+#         model_path=model_path,
+#         config_path=config_path,
+#         speakers_file_path=speakers_file_path,
+#         progress_bar=False,
+#         gpu=False
+#     )
+
+#     # Jika model multi-speaker, bisa lihat daftar speaker:
+#     # try:
+#     #     print("Available speakers:", tts.speakers)
+#     # except AttributeError:
+#     #     pass
+
+#     # panggil tts
+#     wav = tts.tts(
+#         text=phoneme_text,
+#         speaker=speaker
+#     )
+#     # kemungkinan wav adalah numpy array, dan ada sample rate default dalam config
+    
+#     # Temuin sample rate modelnya (bisa di tts.synthesizer.sample_rate atau ada field di tts)
+#     sr = tts.synthesizer.output_sample_rate if hasattr(tts, "synthesizer") else 22050  # ganti kalau model lain
+
+#     # mainkan audio
+#     sd.play(wav, samplerate=sr)
+#     sd.wait()
 
 import mediapipe as mp
 
@@ -409,7 +434,8 @@ class App_Input(customtkinter.CTk): #CTkToplevel
         self.button = customtkinter.CTkButton(self, text="SUBMIT", command=self.button_callback, font=("Helvetica",30))
         self.button.grid(row=2, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
 
-        tts_indo("Selamat datang di permainan Blok Desain Tes.") #名前、年齢、性別を入力してください。
+        play_audio("AUDIO/selamat_datang.wav")
+        # tts_indo("Selamat datang di permainan Blok Desain Tes.") #名前、年齢、性別を入力してください。
         #SpeakTextG("... ")
 
 
@@ -706,7 +732,8 @@ class TimeIn(customtkinter.CTk):
         # Show the current level button in the same position
         self.show_current_level_button(self.current_question)
         
-        tts_indo("Permainan akan dimulai dalam. tiga, dua, satu, mulai.")
+        play_audio("AUDIO/hitung_mundur.wav")
+        # tts_indo("Permainan akan dimulai dalam. tiga, dua, satu, mulai.")
         print("START")
         #self.start_task = time.time()
         
@@ -1030,22 +1057,29 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_01))
 
                         print ("TASK 1 COMPLETED in " + str(self.timer_task_01) +" seconds")
-                        tts_indo("Level satu selesai dalam " + number_to_words_id(int(self.timer_task_01)) +" detik.")
+                        # tts_indo("Level satu selesai dalam " + number_to_words_id(int(self.timer_task_01)) +" detik.")
 
                         if int(self.timer_task_01) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_01) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_01) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_01) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_01) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
-                        tts_indo("Lanjut ke level dua.")
+                        play_audio("AUDIO/lanjut_lvl2.wav")
+                        # tts_indo("Lanjut ke level dua.")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
@@ -1112,22 +1146,29 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_02))
 
                         print ("TASK 2 COMPLETED in " + str(self.timer_task_02) +" seconds")
-                        tts_indo("Level dua selesai dalam " + number_to_words_id(int(self.timer_task_02)) +" detik.")
+                        # tts_indo("Level dua selesai dalam " + number_to_words_id(int(self.timer_task_02)) +" detik.")
 
                         if int(self.timer_task_02) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_02) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_02) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_02) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_02) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
-                        tts_indo("Lanjut ke level tiga")
+                        play_audio("AUDIO/lanjut_lvl3.wav")
+                        # tts_indo("Lanjut ke level tiga")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
@@ -1194,22 +1235,29 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_03))
 
                         print ("TASK 3 COMPLETED in " + str(self.timer_task_03) +" seconds")
-                        tts_indo("Level tiga selesai dalam " + number_to_words_id(int(self.timer_task_03)) +" detik.")
+                        # tts_indo("Level tiga selesai dalam " + number_to_words_id(int(self.timer_task_03)) +" detik.")
 
                         if int(self.timer_task_03) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_03) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_03) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_03) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_03) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
-                        tts_indo("Lanjut ke level empat.")
+                        play_audio("AUDIO/lanjut_lvl4.wav")
+                        # tts_indo("Lanjut ke level empat.")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
@@ -1276,22 +1324,29 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_04))
 
                         print ("TASK 4 COMPLETED in " + str(self.timer_task_04) +" seconds")
-                        tts_indo("Level empat selesai dalam " + number_to_words_id(int(self.timer_task_04)) +" detik.")
+                        # tts_indo("Level empat selesai dalam " + number_to_words_id(int(self.timer_task_04)) +" detik.")
 
                         if int(self.timer_task_04) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_04) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_04) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_04) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_04) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
-                        tts_indo("Lanjut ke level lima")
+                        play_audio("AUDIO/lanjut_lvl5.wav")
+                        # tts_indo("Lanjut ke level lima")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
@@ -1359,22 +1414,29 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_05))
 
                         print ("TASK 5 COMPLETED in " + str(self.timer_task_05) +" seconds")
-                        tts_indo("Level lima selesai dalam " + number_to_words_id(int(self.timer_task_05)) +" detik.")
+                        # tts_indo("Level lima selesai dalam " + number_to_words_id(int(self.timer_task_05)) +" detik.")
 
                         if int(self.timer_task_05) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_05) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_05) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_05) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_05) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
-                        tts_indo("Lanjut ke level enam.")
+                        play_audio("AUDIO/lanjut_lvl6.wav")
+                        # tts_indo("Lanjut ke level enam.")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
@@ -1442,22 +1504,29 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_06))
 
                         print ("TASK 6 COMPLETED in " + str(self.timer_task_06) +" seconds")
-                        tts_indo("Level enam selesai dalam " + number_to_words_id(int(self.timer_task_06)) +" detik.")
+                        # tts_indo("Level enam selesai dalam " + number_to_words_id(int(self.timer_task_06)) +" detik.")
 
                         if int(self.timer_task_06) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_06) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_06) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_06) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_06) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
-                        tts_indo("Lanjut ke level tujuh.")
+                        play_audio("AUDIO/lanjut_lvl7.wav")
+                        # tts_indo("Lanjut ke level tujuh.")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
@@ -1524,22 +1593,29 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_07))
 
                         print ("TASK 7 COMPLETED in " + str(self.timer_task_07) +" seconds")
-                        tts_indo("Level tujuh selesai dalam " + number_to_words_id(int(self.timer_task_07)) +" detik.")
+                        # tts_indo("Level tujuh selesai dalam " + number_to_words_id(int(self.timer_task_07)) +" detik.")
 
                         if int(self.timer_task_07) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_07) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_07) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_07) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_07) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
-                        tts_indo("Lanjut ke level delapan.")
+                        play_audio("AUDIO/lanjut_lvl8.wav")
+                        # tts_indo("Lanjut ke level delapan.")
 
                         #IMAGE_WIDTH = 650
                         #IMAGE_HEIGHT = 650
@@ -1606,20 +1682,26 @@ class TimeIn(customtkinter.CTk):
                         self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_08))
 
                         print ("TASK 8 COMPLETED in " + str(self.timer_task_08) +" seconds")
-                        tts_indo("Level delapan selesai dalam " + number_to_words_id(int(self.timer_task_08)) +" detik.")
+                        # tts_indo("Level delapan selesai dalam " + number_to_words_id(int(self.timer_task_08)) +" detik.")
 
                         if int(self.timer_task_08) < 10:
-                            tts_indo("Menakjubkan.")
+                            play_audio("AUDIO/menakjubkan.wav")
+                            # tts_indo("Menakjubkan.")
                         elif int(self.timer_task_08) < 15:
-                            tts_indo("Hebat sekali.")
+                            play_audio("AUDIO/hebat_sekali.wav")
+                            # tts_indo("Hebat sekali.")
                         elif int(self.timer_task_08) < 20:
-                            tts_indo("Mantap.")
+                            play_audio("AUDIO/mantap.wav")
+                            # tts_indo("Mantap.")
                         elif int(self.timer_task_08) < 25:
-                            tts_indo("Kerja bagus.")
+                            play_audio("AUDIO/kerja_bagus.wav")
+                            # tts_indo("Kerja bagus.")
                         elif int(self.timer_task_08) < 30:
-                            tts_indo("Ayo semangat.")
+                            play_audio("AUDIO/ayo_semangat.wav")
+                            # tts_indo("Ayo semangat.")
                         else:
-                            tts_indo("Jangan menyerah.")
+                            play_audio("AUDIO/jangan_menyerah.wav")
+                            # tts_indo("Jangan menyerah.")
 
                         # Stop the timer
                         self.reset_timer()
@@ -1666,10 +1748,11 @@ class TimeIn(customtkinter.CTk):
                         print("Your Cognitive Age is " + str( age_cog ) +" years")
                         print("Your Cognitive Fitness is " + str( visuo_spatial ) +" %")
 
-                        tts_indo("Permainan Blok Desain Tes sudah selesai")
+                        play_audio("AUDIO/selesai.wav")
+                        # tts_indo("Permainan Blok Desain Tes sudah selesai")
                         #SpeakTextG("平均完了時間は " + str( self.timer_task_avg) +" 秒です")
                         #SpeakTextG("あなたの現在の年齢は " + str( age_real) +" 歳です")
-                        tts_indo("Estimasi usia kognitifmu adalah" + number_to_words_id(age_cog) +" tahun")
+                        # tts_indo("Estimasi usia kognitifmu adalah" + number_to_words_id(age_cog) +" tahun")
                         #SpeakTextG("あなたの認知能力は " + str(visuo_spatial ) +" %")
                         
                        # SpeakTextG("画面上の鍵でフクロウを入手できます。ありがとうございます。") #お疲れさまでした。
