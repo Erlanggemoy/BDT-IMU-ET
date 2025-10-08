@@ -16,6 +16,7 @@ load_dotenv(dotenv_path=env_path)
         
 # Get display mode from environment variable (default to True if not set or invalid)
 DISPLAY_HALF = os.getenv('DISPLAY_HALF', 'true').lower() == 'true'
+NORMAL_PATTERN = os.getenv('NORMAL_PATTERN', 'true').lower() == 'true'
 
 # Get max level from environment variable (default to 8 if not set or invalid)
 try:
@@ -82,12 +83,20 @@ LEVEL_PATHS = {}
 for variants in LEVEL_VARIANTS.values():
     for variant in variants:
         level_num = variant[0]  # Get the level number (1-8)
-        LEVEL_PATHS[variant] = os.path.join(
-            BASE_DIR, 
-            'FILES', 
-            'TEST_RANDOM_1500x1500', 
-            f'Lvl {level_num}{variant[1]}.png'  # e.g., 'Lvl 1a.png'
-        )
+        if NORMAL_PATTERN:
+            LEVEL_PATHS[variant] = os.path.join(
+                BASE_DIR, 
+                'FILES', 
+                'TEST_RANDOM_1500x1500', 
+                f'Lvl {level_num}{variant[1]}.png'  # e.g., 'Lvl 1a.png'
+            )
+        else:
+            LEVEL_PATHS[variant] = os.path.join(
+                BASE_DIR, 
+                'FILES', 
+                'TEST_RANDOM_OTAK_ATIK', 
+                f'Lvl {level_num}{variant[1]}.PNG'  # e.g., 'Lvl 1a.png'
+            )
 
 #scale_percent = 70 # percent of original size
 #task_width = int(task_0B.shape[1] * scale_percent / 100)
@@ -247,16 +256,28 @@ thumb_flag_08 = True
 # ans_08x = [5,4,3,5]
 
 # Answers for random question
-LEVEL_ANSWERS = {
-    '1a': [2,1,1,1], '1b': [2,1,1,2], '1c': [1,1,1,2], '1d': [1,2,2,1],
-    '2a': [2,1,6,1], '2b': [3,2,1,2], '2c': [2,2,5,6], '2d': [6,2,2,6],
-    '3a': [3,5,1,1], '3b': [1,5,1,6], '3c': [2,3,4,1], '3d': [6,5,3,4],
-    '4a': [6,2,1,6], '4b': [3,2,2,5], '4c': [1,5,3,1], '4d': [4,2,2,6],
-    '5a': [6,3,5,4], '5b': [5,4,6,3], '5c': [3,5,6,4], '5d': [4,4,6,6],
-    '6a': [1,4,3,1], '6b': [6,1,5,5], '6c': [5,1,1,4], '6d': [5,4,4,5],
-    '7a': [4,5,5,5], '7b': [4,5,5,6], '7c': [2,5,1,5], '7d': [1,2,3,6],
-    '8a': [6,5,6,3], '8b': [6,3,4,2], '8c': [5,6,3,5], '8d': [3,6,5,4],
-} 
+if NORMAL_PATTERN:
+    LEVEL_ANSWERS = {
+        '1a': [2,1,1,1], '1b': [2,1,1,2], '1c': [1,1,1,2], '1d': [1,2,2,1],
+        '2a': [2,1,6,1], '2b': [3,2,1,2], '2c': [2,2,5,6], '2d': [6,2,2,6],
+        '3a': [3,5,1,1], '3b': [1,5,1,6], '3c': [2,3,4,1], '3d': [6,5,3,4],
+        '4a': [6,2,1,6], '4b': [3,2,2,5], '4c': [1,5,3,1], '4d': [4,2,2,6],
+        '5a': [6,3,5,4], '5b': [5,4,6,3], '5c': [3,5,6,4], '5d': [4,4,6,6],
+        '6a': [1,4,3,1], '6b': [6,1,5,5], '6c': [5,1,1,4], '6d': [5,4,4,5],
+        '7a': [4,5,5,5], '7b': [4,5,5,6], '7c': [2,5,1,5], '7d': [1,2,3,6],
+        '8a': [6,5,6,3], '8b': [6,3,4,2], '8c': [5,6,3,5], '8d': [3,6,5,4],
+    } 
+else:
+    LEVEL_ANSWERS = {
+        '1a': [1,2,1,2], '1b': [2,1,2,1], '1c': [2,1,1,2], '1d': [1,2,2,1],
+        '2a': [2,4,1,1], '2b': [1,6,2,2], '2c': [1,2,2,4], '2d': [2,1,1,6],
+        '3a': [4,1,5,1], '3b': [6,2,3,2], '3c': [5,1,4,1], '3d': [3,2,6,2],
+        '4a': [4,1,1,6], '4b': [6,2,2,4], '4c': [1,5,3,1], '4d': [2,3,5,2],
+        '5a': [4,3,5,6], '5b': [6,5,3,4], '5c': [6,6,6,6], '5d': [4,4,4,4],
+        '6a': [5,3,4,6], '6b': [3,5,6,4], '6c': [6,6,4,4], '6d': [4,4,6,6],
+        '7a': [3,4,6,5], '7b': [5,6,4,3], '7c': [3,6,4,5], '7d': [5,4,6,3],
+        '8a': [5,4,4,5], '8b': [3,6,6,3], '8c': [4,5,3,6], '8d': [6,3,5,4],
+    } 
 
 grasp_pose = [0,0,0,0,0,0,0]
 
