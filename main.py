@@ -812,6 +812,7 @@ class TimeIn(customtkinter.CTk):
         #SpeakTextG("準備ができたらスタートボタンを押してください。")
 
     def end_test(self):
+        self.current_question = 9
         self.reset_timer()
         self.stop_timer()
         self.current_level_button.grid_remove()
