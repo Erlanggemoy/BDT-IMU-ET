@@ -79,6 +79,59 @@ LEVEL_VARIANTS = {
     7: ['7a', '7b', '7c', '7d'],
     8: ['8a', '8b', '8c', '8d']
 }
+def parse_custom_levels(custom_level_str):
+    """Parse and validate custom levels from string format.
+    
+    Args:
+        custom_level_str: String in format '1a,2b,3c,4d,5d,6c,7b,8a' or empty string
+        
+    Returns:
+        dict: Dictionary mapping level numbers to their custom variants, or empty dict if invalid
+    """
+    if not custom_level_str or custom_level_str == '[]':
+        return {}
+        
+    try:
+        # Remove any whitespace and split by comma
+        levels = [lvl.strip() for lvl in custom_level_str.split(',') if lvl.strip()]
+        
+        # Validate each level
+        custom_levels = {}
+        for level in levels:
+            if len(level) != 2:
+                print(f"Invalid level format: {level}. Must be like '1a', '2b', etc.")
+                return {}
+                
+            level_num = level[0]
+            variant = level[1].lower()
+            
+            # Validate level number (1-8)
+            if not level_num.isdigit() or int(level_num) < 1 or int(level_num) > 8:
+                print(f"Invalid level number in {level}. Must be 1-8.")
+                return {}
+                
+            # Validate variant (a-d)
+            if variant not in ['a', 'b', 'c', 'd']:
+                print(f"Invalid variant in {level}. Must be a, b, c, or d.")
+                return {}
+                
+            custom_levels[int(level_num)] = f"{level_num}{variant}"
+            
+        return custom_levels
+        
+    except Exception as e:
+        print(f"Error parsing CUSTOM_LEVEL: {e}")
+        return {}
+
+# Parse and validate custom levels
+CUSTOM_LEVEL_STR = os.getenv('CUSTOM_LEVEL', '').strip()
+CUSTOM_LEVELS = parse_custom_levels(CUSTOM_LEVEL_STR)
+
+# If we have valid custom levels, print them
+if CUSTOM_LEVELS:
+    print(f"Using custom levels: {CUSTOM_LEVELS}")
+else:
+    print("No valid custom levels specified, using random variants")
 LEVEL_PATHS = {}
 for variants in LEVEL_VARIANTS.values():
     for variant in variants:
@@ -1173,7 +1226,12 @@ class TimeIn(customtkinter.CTk):
             self.end_test()
     
     def get_random_variant(self, level):
-        """Get a random variant (a-d) for the specified level."""
+        """Get a variant for the specified level, using custom levels if available."""
+        # If we have a custom level defined, use it
+        if level in CUSTOM_LEVELS:
+            return CUSTOM_LEVELS[level]
+            
+        # Otherwise, choose a random variant (a-d)
         variants = ['a', 'b', 'c', 'd']
         return f"{level}{random.choice(variants)}"
 
