@@ -22,3 +22,4 @@ python-dotenv
 mediapipe
 coqui-tts
 g2p-id@ git+https://github.com/Wikidepia/g2p-id.git
+ultralytics

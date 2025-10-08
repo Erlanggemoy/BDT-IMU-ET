@@ -902,7 +902,7 @@ class TimeIn(customtkinter.CTk):
         print("Your Cognitive Age is " + str(age_cog) + " years")
         print("Your Cognitive Fitness is " + str(visuo_spatial) + " %")
 
-        play_audio("audio/selesai.wav")
+        play_audio("AUDIO/selesai.wav")
         time.sleep(3)
 
         # Save results to PostgreSQL database
@@ -1053,22 +1053,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_01 = False
             print(f"TASK 1 SKIPPED after {self.timer_task_01} seconds")
             if int(self.timer_task_01) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_01) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_01) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_01) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_01) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
             if self.max_level != 1:
                 play_audio("AUDIO/lanjut_lvl2.wav")
@@ -1081,22 +1081,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_02 = False
             print(f"TASK 2 SKIPPED after {self.timer_task_02} seconds")
             if int(self.timer_task_02) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_02) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_02) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_02) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_02) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
             if self.max_level != 2:
                 play_audio("AUDIO/lanjut_lvl3.wav")
@@ -1110,22 +1110,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_03 = False
             print(f"TASK 3 SKIPPED after {self.timer_task_03} seconds")
             if int(self.timer_task_03) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_03) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_03) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_03) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_03) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
             if self.max_level != 3:
                 play_audio("AUDIO/lanjut_lvl4.wav")
@@ -1138,22 +1138,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_04 = False
             print(f"TASK 4 SKIPPED after {self.timer_task_04} seconds")
             if int(self.timer_task_04) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_04) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_04) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_04) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_04) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
             if self.max_level != 4:
                 play_audio("AUDIO/lanjut_lvl5.wav")
@@ -1166,22 +1166,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_05 = False
             print(f"TASK 5 SKIPPED after {self.timer_task_05} seconds")
             if int(self.timer_task_05) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_05) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_05) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_05) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_05) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
             if self.max_level != 5:
                 play_audio("AUDIO/lanjut_lvl6.wav")
@@ -1194,22 +1194,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_06 = False
             print(f"TASK 6 SKIPPED after {self.timer_task_06} seconds")
             if int(self.timer_task_06) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_06) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_06) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_06) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_06) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
             if self.max_level != 6:
                 play_audio("AUDIO/lanjut_lvl7.wav")
@@ -1222,22 +1222,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_07 = False
             print(f"TASK 7 SKIPPED after {self.timer_task_07} seconds")
             if int(self.timer_task_07) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_07) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_07) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_07) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_07) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
             if self.max_level != 7:
                 play_audio("AUDIO/lanjut_lvl8.wav")
@@ -1250,22 +1250,22 @@ class TimeIn(customtkinter.CTk):
             self.task_flag_08 = False
             print(f"TASK 8 SKIPPED after {self.timer_task_08} seconds")
             if int(self.timer_task_08) < 10:
-                play_audio("Audio/menakjubkan.wav")
+                play_audio("AUDIO/menakjubkan.wav")
             # tts_indo("Menakjubkan.")
             elif int(self.timer_task_08) < 15:
-                play_audio("Audio/hebat_sekali.wav")
+                play_audio("AUDIO/hebat_sekali.wav")
             # tts_indo("Hebat sekali.")
             elif int(self.timer_task_08) < 20:
-                play_audio("Audio/mantap.wav")
+                play_audio("AUDIO/mantap.wav")
             # tts_indo("Mantap.")
             elif int(self.timer_task_08) < 25:
-                play_audio("Audio/kerja_bagus.wav")
+                play_audio("AUDIO/kerja_bagus.wav")
             # tts_indo("Kerja bagus.")
             elif int(self.timer_task_08) < 30:
-                play_audio("Audio/ayo_semangat.wav")
+                play_audio("AUDIO/ayo_semangat.wav")
             # tts_indo("Ayo semangat.")
             else:
-                play_audio("Audio/jangan_menyerah.wav")
+                play_audio("AUDIO/jangan_menyerah.wav")
             self.current_question = 9
             # tts_indo("Jangan menyerah.")
             # No need to change current_question as this is the last level
