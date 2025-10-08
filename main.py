@@ -46,9 +46,76 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'exp7', 'weights', 'best.pt')
-model_yolo = torch.hub.load(os.path.join(BASE_DIR, 'MODEL', 'yolov5'), 'custom', path=PATH_MODEL, force_reload=True, source='local')
-model_yolo.to(device)
+USE_BANTAL_MODEL = os.getenv('MODEL_BANTAL', 'false').lower() == 'true'
+if USE_BANTAL_MODEL:
+    PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'bantal', 'bantal.pt')
+    
+    try:
+        print(">>> Loading bantal.pt with Ultralytics format...")
+        
+        # Cek apakah ini model Ultralytics (v8+ atau v7.0+)
+        checkpoint = torch.load(PATH_MODEL, map_location='cpu', weights_only=False)
+        
+        if 'version' in checkpoint:
+            print(f">>> Model version: {checkpoint['version']}")
+        
+        # Jika model dari Ultralytics (punya key 'version')
+        if 'version' in checkpoint and hasattr(checkpoint['model'], '__class__') and \
+           'ultralytics' in str(checkpoint['model'].__class__):
+            
+            print(">>> Detected Ultralytics format, loading with ultralytics library...")
+            
+            # Coba load dengan ultralytics library
+            try:
+                from ultralytics import YOLO
+                model_yolo = YOLO(PATH_MODEL)
+                model_yolo.to(device)
+                print(">>> Model bantal.pt loaded successfully with Ultralytics YOLO")
+            except ImportError:
+                print(">>> Ultralytics library not found, installing...")
+                import subprocess
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "ultralytics"])
+                from ultralytics import YOLO
+                model_yolo = YOLO(PATH_MODEL)
+                model_yolo.to(device)
+                print(">>> Model bantal.pt loaded successfully with Ultralytics YOLO")
+        
+        else:
+            # Fallback: gunakan attempt_load biasa
+            print(">>> Loading with attempt_load...")
+            import sys
+            sys.path.insert(0, os.path.join(BASE_DIR, 'MODEL', 'yolov5'))
+            from models.experimental import attempt_load
+            
+            model_yolo = attempt_load(PATH_MODEL, device='cpu')
+            
+            # Inisialisasi grid untuk model lama
+            for m in model_yolo.modules():
+                if type(m).__name__ == 'Detect':
+                    if not hasattr(m, 'grid'):
+                        m.grid = [torch.zeros(1)] * m.nl
+                    if not hasattr(m, 'anchor_grid'):
+                        m.anchor_grid = [torch.zeros(1)] * m.nl
+            
+            model_yolo.to(device)
+            print(">>> Model bantal.pt loaded successfully with attempt_load")
+    
+    except Exception as e:
+        print(f">>> Failed to load bantal.pt: {e}")
+        print(">>> Falling back to best.pt...")
+        USE_BANTAL_MODEL = False
+        PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'exp7', 'weights', 'best.pt')
+
+if not USE_BANTAL_MODEL:
+    PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'exp7', 'weights', 'best.pt')
+    model_yolo = torch.hub.load(
+        os.path.join(BASE_DIR, 'MODEL', 'yolov5'), 
+        'custom', 
+        path=PATH_MODEL, 
+        force_reload=True, 
+        source='local'
+    )
+    model_yolo.to(device)
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Read Files
@@ -1384,10 +1451,36 @@ class TimeIn(customtkinter.CTk):
         ret, imgThres = cv2.threshold(imgGray, 175, 255, cv2.THRESH_BINARY) #175   195
         
         # Make detections 
-        results = model_yolo(frame)
-
-        df_tracked_objects = results.pandas().xyxy[0]
-        list_tracked_objects = df_tracked_objects.values.tolist()
+        if USE_BANTAL_MODEL:
+            # Untuk model Ultralytics
+            results = model_yolo(frame, verbose=False)
+            
+            # Convert Ultralytics results ke format pandas
+            if len(results) > 0 and hasattr(results[0], 'boxes'):
+                # YOLOv8/Ultralytics format
+                boxes = results[0].boxes
+                detections = []
+                
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    conf = box.conf[0].cpu().numpy()
+                    cls = int(box.cls[0].cpu().numpy())
+                    
+                    detections.append([x1, y1, x2, y2, conf, cls, ''])
+                
+                import pandas as pd
+                df_tracked_objects = pd.DataFrame(
+                    detections, 
+                    columns=['xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class', 'name']
+                )
+                list_tracked_objects = df_tracked_objects.values.tolist()
+            else:
+                list_tracked_objects = []
+        else:
+            # Untuk model YOLOv5 biasa
+            results = model_yolo(frame)
+            df_tracked_objects = results.pandas().xyxy[0]
+            list_tracked_objects = df_tracked_objects.values.tolist()
 
         #if len(list_tracked_objects) == 4: #>0
 
