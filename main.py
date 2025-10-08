@@ -715,11 +715,418 @@ class TimeIn(customtkinter.CTk):
 
         #self.task_state = 1
 
-
+        # Bind Enter key to skip level
+        self.bind('<Return>', self.skip_current_level)
+        
         #SpeakTextG("赤と白の 4 つのブロックから表示されたデザインを作成してください。")
         #SpeakTextG("左手または利き手と反対の手で操作してください。")
         #SpeakTextG("準備ができたらスタートボタンを押してください。")
 
+    def skip_current_level(self, event=None):
+        """Skip the current level when Enter key is pressed"""
+        if not hasattr(self, 'current_question') or not hasattr(self, 'timer_running') or not self.timer_running:
+            return
+            
+        current_time = time.time()
+        time_elapsed = round((current_time - self.start_task), 2)
+        
+        print(f"Skipping level {self.current_question} after {time_elapsed} seconds")
+        
+        # Record the actual time taken for the level
+        if self.current_question == 1 and self.task_flag_01:
+            self.timer_task_01 = time_elapsed
+            self.timer_task_all.append(self.timer_task_01)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_01))
+            self.task_flag_01 = False
+            print(f"TASK 1 SKIPPED after {self.timer_task_01} seconds")
+            if int(self.timer_task_01) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_01) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_01) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_01) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_01) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            # tts_indo("Jangan menyerah.")
+            play_audio("AUDIO/lanjut_lvl2.wav")
+            self.current_question = 2
+            
+        elif self.current_question == 2 and self.task_flag_02:
+            self.timer_task_02 = time_elapsed
+            self.timer_task_all.append(self.timer_task_02)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_02))
+            self.task_flag_02 = False
+            print(f"TASK 2 SKIPPED after {self.timer_task_02} seconds")
+            if int(self.timer_task_02) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_02) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_02) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_02) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_02) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            # tts_indo("Jangan menyerah.")
+            play_audio("AUDIO/lanjut_lvl3.wav")
+            self.current_question = 3
+            
+        # Add more levels as needed (up to 8)
+        elif self.current_question == 3 and self.task_flag_03:
+            self.timer_task_03 = time_elapsed
+            self.timer_task_all.append(self.timer_task_03)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_03))
+            self.task_flag_03 = False
+            print(f"TASK 3 SKIPPED after {self.timer_task_03} seconds")
+            if int(self.timer_task_03) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_03) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_03) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_03) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_03) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            # tts_indo("Jangan menyerah.")
+            play_audio("AUDIO/lanjut_lvl4.wav")
+            self.current_question = 4
+            
+        elif self.current_question == 4 and self.task_flag_04:
+            self.timer_task_04 = time_elapsed
+            self.timer_task_all.append(self.timer_task_04)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_04))
+            self.task_flag_04 = False
+            print(f"TASK 4 SKIPPED after {self.timer_task_04} seconds")
+            if int(self.timer_task_04) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_04) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_04) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_04) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_04) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            # tts_indo("Jangan menyerah.")
+            play_audio("AUDIO/lanjut_lvl5.wav")
+            self.current_question = 5
+            
+        elif self.current_question == 5 and self.task_flag_05:
+            self.timer_task_05 = time_elapsed
+            self.timer_task_all.append(self.timer_task_05)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_05))
+            self.task_flag_05 = False
+            print(f"TASK 5 SKIPPED after {self.timer_task_05} seconds")
+            if int(self.timer_task_05) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_05) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_05) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_05) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_05) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            # tts_indo("Jangan menyerah.")
+            play_audio("AUDIO/lanjut_lvl6.wav")
+            self.current_question = 6
+            
+        elif self.current_question == 6 and self.task_flag_06:
+            self.timer_task_06 = time_elapsed
+            self.timer_task_all.append(self.timer_task_06)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_06))
+            self.task_flag_06 = False
+            print(f"TASK 6 SKIPPED after {self.timer_task_06} seconds")
+            if int(self.timer_task_06) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_06) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_06) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_06) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_06) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            # tts_indo("Jangan menyerah.")
+            play_audio("AUDIO/lanjut_lvl7.wav")
+            self.current_question = 7
+            
+        elif self.current_question == 7 and self.task_flag_07:
+            self.timer_task_07 = time_elapsed
+            self.timer_task_all.append(self.timer_task_07)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_07))
+            self.task_flag_07 = False
+            print(f"TASK 7 SKIPPED after {self.timer_task_07} seconds")
+            if int(self.timer_task_07) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_07) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_07) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_07) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_07) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            # tts_indo("Jangan menyerah.")
+            play_audio("AUDIO/lanjut_lvl8.wav")
+            self.current_question = 8
+            
+        elif self.current_question == 8 and self.task_flag_08:
+            self.timer_task_08 = time_elapsed
+            self.timer_task_all.append(self.timer_task_08)
+            self.cognitive_age_list.append(self.estimate_cognitive_age(self.timer_task_08))
+            self.task_flag_08 = False
+            print(f"TASK 8 SKIPPED after {self.timer_task_08} seconds")
+            if int(self.timer_task_08) < 10:
+                play_audio("Audio/menakjubkan.wav")
+            # tts_indo("Menakjubkan.")
+            elif int(self.timer_task_08) < 15:
+                play_audio("Audio/hebat_sekali.wav")
+            # tts_indo("Hebat sekali.")
+            elif int(self.timer_task_08) < 20:
+                play_audio("Audio/mantap.wav")
+            # tts_indo("Mantap.")
+            elif int(self.timer_task_08) < 25:
+                play_audio("Audio/kerja_bagus.wav")
+            # tts_indo("Kerja bagus.")
+            elif int(self.timer_task_08) < 30:
+                play_audio("Audio/ayo_semangat.wav")
+            # tts_indo("Ayo semangat.")
+            else:
+                play_audio("Audio/jangan_menyerah.wav")
+            self.current_question = 9
+            # tts_indo("Jangan menyerah.")
+            # No need to change current_question as this is the last level
+        
+        # Update the display for the next level if not the last level
+        if 1 <= self.current_question <= 8:
+            variant = self.get_random_variant(self.current_question)
+            self.current_variant = variant
+            frame_width = 400  # Adjust based on your needs
+            frame_height = 400  # Adjust based on your needs
+            
+            # Load and display the next level's image
+            IMAGE_PATH = LEVEL_PATHS[variant]
+            self.image = customtkinter.CTkImage(
+                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                size=(frame_width, frame_height)
+            )
+            self.image_label.configure(image=self.image)
+            self.current_level_button.grid_remove()
+            self.show_current_level_button(self.current_question)
+            # Reset the start time for the next level
+            self.start_task = time.time()
+            self.reset_timer()
+            self.start_timer()
+        elif self.current_question == 9:
+            self.reset_timer()
+            self.stop_timer()
+            self.current_level_button.grid_remove()
+            self.timer_task_avg = format(float(sum(self.timer_task_all) / len(self.timer_task_all)), ".3f")
+            cognitive_age_avg = int(sum(self.cognitive_age_list) / len(self.cognitive_age_list))
+            age_real = int(self.age_range_code)
+            age_cog = cognitive_age_avg
+
+            visuo_spatial = 100
+
+            if age_cog <= age_real:
+                visuo_spatial = 100 
+            else:
+                visuo_spatial = 100 - (age_cog - age_real)
+
+            print("Your name is " + self.nick_name)
+            print("Your gender is " + self.gender_code)
+            print("Your Average Completed Time is " + str(self.timer_task_avg) + " second")
+            print("Your Current Age is " + str(age_real) + " years")
+            print("Your Cognitive Age is " + str(age_cog) + " years")
+            print("Your Cognitive Fitness is " + str(visuo_spatial) + " %")
+
+            play_audio("audio/selesai.wav")
+            time.sleep(3)
+
+            # Save results to PostgreSQL database
+            try:
+                conn = get_db_connection()
+                if conn:
+                    with conn.cursor() as cursor:
+                        # First, check if participant exists (case-insensitive name match)
+                        check_query = """
+                        SELECT id FROM bdt.participant_data 
+                        WHERE LOWER(name) = LOWER(%s) 
+                        AND real_age = %s 
+                        AND gender = %s
+                        LIMIT 1
+                        """
+                        cursor.execute(check_query, (
+                                self.nick_name,
+                                int(self.age_range_code),
+                                self.gender_code
+                            ))
+                        participant = cursor.fetchone()
+
+                        # Prepare the values tuple
+                        values = (
+                            self.nick_name,                      # name
+                            int(self.age_range_code),           # real_age
+                            self.gender_code,                   # gender
+                            int(age_cog),                       # estimated_cognitive_age
+                            f"{visuo_spatial}%",                # cognitive_fitness
+                            float(self.timer_task_avg),         # avg_time_all
+                            float(self.timer_task_all[0]) if len(self.timer_task_all) > 0 else None,  # avg_time_1
+                            float(self.timer_task_all[1]) if len(self.timer_task_all) > 1 else None,  # avg_time_2
+                            float(self.timer_task_all[2]) if len(self.timer_task_all) > 2 else None,  # avg_time_3
+                            float(self.timer_task_all[3]) if len(self.timer_task_all) > 3 else None,  # avg_time_4
+                            float(self.timer_task_all[4]) if len(self.timer_task_all) > 4 else None,  # avg_time_5
+                            float(self.timer_task_all[5]) if len(self.timer_task_all) > 5 else None,  # avg_time_6
+                            float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else None,  # avg_time_7
+                            float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
+                        )
+
+                        if participant:
+                            # Update existing record in participant_data
+                            update_query = """
+                            UPDATE bdt.participant_data 
+                            SET 
+                                estimated_cognitive_age = %s,
+                                cognitive_fitness = %s,
+                                avg_time_all = %s,
+                                avg_time_1 = %s,
+                                avg_time_2 = %s,
+                                avg_time_3 = %s,
+                                avg_time_4 = %s,
+                                avg_time_5 = %s,
+                                avg_time_6 = %s,
+                                avg_time_7 = %s,
+                                avg_time_8 = %s,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                            RETURNING id, updated_at
+                            """
+                            # Reorder values for update (exclude name, age, gender and add id at the end)
+                            update_values = values[3:] + (participant[0],)
+                            cursor.execute(update_query, update_values)
+                            updated_participant = cursor.fetchone()
+                            print(">>> Successfully updated existing participant data in database")
+
+                            # Insert history record with the original created_at
+                            history_query = """
+                            INSERT INTO bdt.participant_data_history (
+                                name, real_age, gender, estimated_cognitive_age, 
+                                cognitive_fitness, avg_time_all, avg_time_1, 
+                                avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                                avg_time_6, avg_time_7, avg_time_8, created_at
+                            ) VALUES (
+                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                            )
+                            """
+                            history_values = values + (updated_participant[1],) # Use the same updated_at
+                            cursor.execute(history_query, history_values)
+                            print(">>> Added history record for updated participant")
+
+                        else:
+                            # Insert new record into participant_data
+                            insert_query = """
+                            INSERT INTO bdt.participant_data (
+                                name, real_age, gender, estimated_cognitive_age, 
+                                cognitive_fitness, avg_time_all, avg_time_1, 
+                                avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                                avg_time_6, avg_time_7, avg_time_8, created_at
+                            ) VALUES (
+                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
+                            )
+                            RETURNING id, created_at
+                            """
+                            cursor.execute(insert_query, values)
+                            new_participant = cursor.fetchone()
+                            print(">>> Successfully saved new participant data to database")
+
+                            # Insert the same record into history
+                            history_query = """
+                            INSERT INTO bdt.participant_data_history (
+                                name, real_age, gender, estimated_cognitive_age, 
+                                cognitive_fitness, avg_time_all, avg_time_1, 
+                                avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                                avg_time_6, avg_time_7, avg_time_8, created_at
+                            ) VALUES (
+                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                            )
+                            """
+                            history_values = values + (new_participant[1],)  # Use the same created_at
+                            cursor.execute(history_query, history_values)
+                            print(">>> Added initial history record for new participant")
+                                    
+                        conn.commit()
+                                
+                    # Close the connection
+                    conn.close()
+
+            except Exception as e:
+                print(">>> Error saving to database:")
+                print(f"Error: {e}")
+                if 'conn' in locals():
+                    conn.rollback()
+            finally:
+                if 'conn' in locals() and conn is not None:
+                    conn.close()
+
+            IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg')
+            self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(400 , 400))
+            self.image_label.configure(image=self.image)
+            self.show_retry_button()
+        
+    
     def get_random_variant(self, level):
         """Get a random variant (a-d) for the specified level."""
         variants = ['a', 'b', 'c', 'd']
