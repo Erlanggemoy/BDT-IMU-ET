@@ -490,8 +490,11 @@ app_input.mainloop()
 
 #PATH_VIDEO = r"C:\Users\50575\Desktop\BDT\VIDEO_EXPERIMENT\TLL\TOP_VIEW\anom_02.mp4"
 #cap = cv2.VideoCapture(PATH_VIDEO)          #0, cv2.CAP_DSHOW
-
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+import platform
+if platform.system() == 'Windows':
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+else:  # Linux/Mac
+    cap = cv2.VideoCapture(0)  # atau cv2.CAP_V4L2
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)      #1280   640
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)     #720    480
