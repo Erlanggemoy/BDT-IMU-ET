@@ -14,9 +14,18 @@ from pathlib import Path
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
         
-
 # Get display mode from environment variable (default to True if not set or invalid)
 DISPLAY_HALF = os.getenv('DISPLAY_HALF', 'true').lower() == 'true'
+
+# Get max level from environment variable (default to 8 if not set or invalid)
+try:
+    MAX_LEVEL = int(os.getenv('MAX_LEVEL', '8'))
+    if MAX_LEVEL < 1 or MAX_LEVEL > 8:
+        MAX_LEVEL = 8
+        print(f"Warning: MAX_LEVEL must be between 1 and 8. Using default value: {MAX_LEVEL}")
+except (ValueError, TypeError):
+    MAX_LEVEL = 8
+    print(f"Warning: Invalid MAX_LEVEL in .env file. Using default value: {MAX_LEVEL}")
                                                         
 #
 # \import pyautogui
@@ -718,6 +727,9 @@ class TimeIn(customtkinter.CTk):
 
         #self.task_state = 1
 
+        # Set the maximum level from environment variable
+        self.max_level = MAX_LEVEL
+        
         # Bind Enter key to skip level
         self.bind('<Return>', self.skip_current_level)
         
@@ -725,6 +737,162 @@ class TimeIn(customtkinter.CTk):
         #SpeakTextG("左手または利き手と反対の手で操作してください。")
         #SpeakTextG("準備ができたらスタートボタンを押してください。")
 
+    def end_test(self):
+        self.reset_timer()
+        self.stop_timer()
+        self.current_level_button.grid_remove()
+        self.timer_task_avg = format(float(sum(self.timer_task_all) / len(self.timer_task_all)), ".3f")
+        cognitive_age_avg = int(sum(self.cognitive_age_list) / len(self.cognitive_age_list))
+        age_real = int(self.age_range_code)
+        age_cog = cognitive_age_avg
+
+        visuo_spatial = 100
+
+        if age_cog <= age_real:
+            visuo_spatial = 100 
+        else:
+            visuo_spatial = 100 - (age_cog - age_real)
+
+        print("Your name is " + self.nick_name)
+        print("Your gender is " + self.gender_code)
+        print("Your Average Completed Time is " + str(self.timer_task_avg) + " second")
+        print("Your Current Age is " + str(age_real) + " years")
+        print("Your Cognitive Age is " + str(age_cog) + " years")
+        print("Your Cognitive Fitness is " + str(visuo_spatial) + " %")
+
+        play_audio("audio/selesai.wav")
+        time.sleep(3)
+
+        # Save results to PostgreSQL database
+        try:
+            conn = get_db_connection()
+            if conn:
+                with conn.cursor() as cursor:
+                    # First, check if participant exists (case-insensitive name match)
+                    check_query = """
+                    SELECT id FROM bdt.participant_data 
+                    WHERE LOWER(name) = LOWER(%s) 
+                    AND real_age = %s 
+                    AND gender = %s
+                    LIMIT 1
+                    """
+                    cursor.execute(check_query, (
+                            self.nick_name,
+                            int(self.age_range_code),
+                            self.gender_code
+                        ))
+                    participant = cursor.fetchone()
+
+                    # Prepare the values tuple
+                    values = (
+                        self.nick_name,                      # name
+                        int(self.age_range_code),           # real_age
+                        self.gender_code,                   # gender
+                        int(age_cog),                       # estimated_cognitive_age
+                        f"{visuo_spatial}%",                # cognitive_fitness
+                        float(self.timer_task_avg),         # avg_time_all
+                        float(self.timer_task_all[0]) if len(self.timer_task_all) > 0 else None,  # avg_time_1
+                        float(self.timer_task_all[1]) if len(self.timer_task_all) > 1 else None,  # avg_time_2
+                        float(self.timer_task_all[2]) if len(self.timer_task_all) > 2 else None,  # avg_time_3
+                        float(self.timer_task_all[3]) if len(self.timer_task_all) > 3 else None,  # avg_time_4
+                        float(self.timer_task_all[4]) if len(self.timer_task_all) > 4 else None,  # avg_time_5
+                        float(self.timer_task_all[5]) if len(self.timer_task_all) > 5 else None,  # avg_time_6
+                        float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else None,  # avg_time_7
+                        float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
+                    )
+
+                    if participant:
+                        # Update existing record in participant_data
+                        update_query = """
+                        UPDATE bdt.participant_data 
+                        SET 
+                            estimated_cognitive_age = %s,
+                            cognitive_fitness = %s,
+                            avg_time_all = %s,
+                            avg_time_1 = %s,
+                            avg_time_2 = %s,
+                            avg_time_3 = %s,
+                            avg_time_4 = %s,
+                            avg_time_5 = %s,
+                            avg_time_6 = %s,
+                            avg_time_7 = %s,
+                            avg_time_8 = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        RETURNING id, updated_at
+                        """
+                        # Reorder values for update (exclude name, age, gender and add id at the end)
+                        update_values = values[3:] + (participant[0],)
+                        cursor.execute(update_query, update_values)
+                        updated_participant = cursor.fetchone()
+                        print(">>> Successfully updated existing participant data in database")
+
+                        # Insert history record with the original created_at
+                        history_query = """
+                        INSERT INTO bdt.participant_data_history (
+                            name, real_age, gender, estimated_cognitive_age, 
+                            cognitive_fitness, avg_time_all, avg_time_1, 
+                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                            avg_time_6, avg_time_7, avg_time_8, created_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        )
+                        """
+                        history_values = values + (updated_participant[1],) # Use the same updated_at
+                        cursor.execute(history_query, history_values)
+                        print(">>> Added history record for updated participant")
+
+                    else:
+                        # Insert new record into participant_data
+                        insert_query = """
+                        INSERT INTO bdt.participant_data (
+                            name, real_age, gender, estimated_cognitive_age, 
+                            cognitive_fitness, avg_time_all, avg_time_1, 
+                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                            avg_time_6, avg_time_7, avg_time_8, created_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
+                        )
+                        RETURNING id, created_at
+                        """
+                        cursor.execute(insert_query, values)
+                        new_participant = cursor.fetchone()
+                        print(">>> Successfully saved new participant data to database")
+
+                        # Insert the same record into history
+                        history_query = """
+                        INSERT INTO bdt.participant_data_history (
+                            name, real_age, gender, estimated_cognitive_age, 
+                            cognitive_fitness, avg_time_all, avg_time_1, 
+                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
+                            avg_time_6, avg_time_7, avg_time_8, created_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        )
+                        """
+                        history_values = values + (new_participant[1],)  # Use the same created_at
+                        cursor.execute(history_query, history_values)
+                        print(">>> Added initial history record for new participant")
+                                    
+                    conn.commit()
+                                
+                # Close the connection
+                conn.close()
+
+        except Exception as e:
+            print(">>> Error saving to database:")
+            print(f"Error: {e}")
+            if 'conn' in locals():
+                conn.rollback()
+        finally:
+            if 'conn' in locals() and conn is not None:
+                conn.close()
+
+        IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg')
+        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(400 , 400))
+        self.image_label.configure(image=self.image)
+        self.show_retry_button()
+    
     def skip_current_level(self, event=None):
         """Skip the current level when Enter key is pressed"""
         if not hasattr(self, 'current_question') or not hasattr(self, 'timer_running') or not self.timer_running:
@@ -760,7 +928,8 @@ class TimeIn(customtkinter.CTk):
             else:
                 play_audio("Audio/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
-            play_audio("AUDIO/lanjut_lvl2.wav")
+            if self.max_level != 1:
+                play_audio("AUDIO/lanjut_lvl2.wav")
             self.current_question = 2
             
         elif self.current_question == 2 and self.task_flag_02:
@@ -787,7 +956,8 @@ class TimeIn(customtkinter.CTk):
             else:
                 play_audio("Audio/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
-            play_audio("AUDIO/lanjut_lvl3.wav")
+            if self.max_level != 2:
+                play_audio("AUDIO/lanjut_lvl3.wav")
             self.current_question = 3
             
         # Add more levels as needed (up to 8)
@@ -815,7 +985,8 @@ class TimeIn(customtkinter.CTk):
             else:
                 play_audio("Audio/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
-            play_audio("AUDIO/lanjut_lvl4.wav")
+            if self.max_level != 3:
+                play_audio("AUDIO/lanjut_lvl4.wav")
             self.current_question = 4
             
         elif self.current_question == 4 and self.task_flag_04:
@@ -842,7 +1013,8 @@ class TimeIn(customtkinter.CTk):
             else:
                 play_audio("Audio/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
-            play_audio("AUDIO/lanjut_lvl5.wav")
+            if self.max_level != 4:
+                play_audio("AUDIO/lanjut_lvl5.wav")
             self.current_question = 5
             
         elif self.current_question == 5 and self.task_flag_05:
@@ -869,7 +1041,8 @@ class TimeIn(customtkinter.CTk):
             else:
                 play_audio("Audio/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
-            play_audio("AUDIO/lanjut_lvl6.wav")
+            if self.max_level != 5:
+                play_audio("AUDIO/lanjut_lvl6.wav")
             self.current_question = 6
             
         elif self.current_question == 6 and self.task_flag_06:
@@ -896,7 +1069,8 @@ class TimeIn(customtkinter.CTk):
             else:
                 play_audio("Audio/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
-            play_audio("AUDIO/lanjut_lvl7.wav")
+            if self.max_level != 6:
+                play_audio("AUDIO/lanjut_lvl7.wav")
             self.current_question = 7
             
         elif self.current_question == 7 and self.task_flag_07:
@@ -923,7 +1097,8 @@ class TimeIn(customtkinter.CTk):
             else:
                 play_audio("Audio/jangan_menyerah.wav")
             # tts_indo("Jangan menyerah.")
-            play_audio("AUDIO/lanjut_lvl8.wav")
+            if self.max_level != 7:
+                play_audio("AUDIO/lanjut_lvl8.wav")
             self.current_question = 8
             
         elif self.current_question == 8 and self.task_flag_08:
@@ -954,7 +1129,7 @@ class TimeIn(customtkinter.CTk):
             # No need to change current_question as this is the last level
         
         # Update the display for the next level if not the last level
-        if 1 <= self.current_question <= 8:
+        if 1 <= self.current_question <= self.max_level:
             variant = self.get_random_variant(self.current_question)
             self.current_variant = variant
             frame_width = 400  # Adjust based on your needs
@@ -973,162 +1148,8 @@ class TimeIn(customtkinter.CTk):
             self.start_task = time.time()
             self.reset_timer()
             self.start_timer()
-        elif self.current_question == 9:
-            self.reset_timer()
-            self.stop_timer()
-            self.current_level_button.grid_remove()
-            self.timer_task_avg = format(float(sum(self.timer_task_all) / len(self.timer_task_all)), ".3f")
-            cognitive_age_avg = int(sum(self.cognitive_age_list) / len(self.cognitive_age_list))
-            age_real = int(self.age_range_code)
-            age_cog = cognitive_age_avg
-
-            visuo_spatial = 100
-
-            if age_cog <= age_real:
-                visuo_spatial = 100 
-            else:
-                visuo_spatial = 100 - (age_cog - age_real)
-
-            print("Your name is " + self.nick_name)
-            print("Your gender is " + self.gender_code)
-            print("Your Average Completed Time is " + str(self.timer_task_avg) + " second")
-            print("Your Current Age is " + str(age_real) + " years")
-            print("Your Cognitive Age is " + str(age_cog) + " years")
-            print("Your Cognitive Fitness is " + str(visuo_spatial) + " %")
-
-            play_audio("audio/selesai.wav")
-            time.sleep(3)
-
-            # Save results to PostgreSQL database
-            try:
-                conn = get_db_connection()
-                if conn:
-                    with conn.cursor() as cursor:
-                        # First, check if participant exists (case-insensitive name match)
-                        check_query = """
-                        SELECT id FROM bdt.participant_data 
-                        WHERE LOWER(name) = LOWER(%s) 
-                        AND real_age = %s 
-                        AND gender = %s
-                        LIMIT 1
-                        """
-                        cursor.execute(check_query, (
-                                self.nick_name,
-                                int(self.age_range_code),
-                                self.gender_code
-                            ))
-                        participant = cursor.fetchone()
-
-                        # Prepare the values tuple
-                        values = (
-                            self.nick_name,                      # name
-                            int(self.age_range_code),           # real_age
-                            self.gender_code,                   # gender
-                            int(age_cog),                       # estimated_cognitive_age
-                            f"{visuo_spatial}%",                # cognitive_fitness
-                            float(self.timer_task_avg),         # avg_time_all
-                            float(self.timer_task_all[0]) if len(self.timer_task_all) > 0 else None,  # avg_time_1
-                            float(self.timer_task_all[1]) if len(self.timer_task_all) > 1 else None,  # avg_time_2
-                            float(self.timer_task_all[2]) if len(self.timer_task_all) > 2 else None,  # avg_time_3
-                            float(self.timer_task_all[3]) if len(self.timer_task_all) > 3 else None,  # avg_time_4
-                            float(self.timer_task_all[4]) if len(self.timer_task_all) > 4 else None,  # avg_time_5
-                            float(self.timer_task_all[5]) if len(self.timer_task_all) > 5 else None,  # avg_time_6
-                            float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else None,  # avg_time_7
-                            float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
-                        )
-
-                        if participant:
-                            # Update existing record in participant_data
-                            update_query = """
-                            UPDATE bdt.participant_data 
-                            SET 
-                                estimated_cognitive_age = %s,
-                                cognitive_fitness = %s,
-                                avg_time_all = %s,
-                                avg_time_1 = %s,
-                                avg_time_2 = %s,
-                                avg_time_3 = %s,
-                                avg_time_4 = %s,
-                                avg_time_5 = %s,
-                                avg_time_6 = %s,
-                                avg_time_7 = %s,
-                                avg_time_8 = %s,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE id = %s
-                            RETURNING id, updated_at
-                            """
-                            # Reorder values for update (exclude name, age, gender and add id at the end)
-                            update_values = values[3:] + (participant[0],)
-                            cursor.execute(update_query, update_values)
-                            updated_participant = cursor.fetchone()
-                            print(">>> Successfully updated existing participant data in database")
-
-                            # Insert history record with the original created_at
-                            history_query = """
-                            INSERT INTO bdt.participant_data_history (
-                                name, real_age, gender, estimated_cognitive_age, 
-                                cognitive_fitness, avg_time_all, avg_time_1, 
-                                avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                                avg_time_6, avg_time_7, avg_time_8, created_at
-                            ) VALUES (
-                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                            )
-                            """
-                            history_values = values + (updated_participant[1],) # Use the same updated_at
-                            cursor.execute(history_query, history_values)
-                            print(">>> Added history record for updated participant")
-
-                        else:
-                            # Insert new record into participant_data
-                            insert_query = """
-                            INSERT INTO bdt.participant_data (
-                                name, real_age, gender, estimated_cognitive_age, 
-                                cognitive_fitness, avg_time_all, avg_time_1, 
-                                avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                                avg_time_6, avg_time_7, avg_time_8, created_at
-                            ) VALUES (
-                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
-                            )
-                            RETURNING id, created_at
-                            """
-                            cursor.execute(insert_query, values)
-                            new_participant = cursor.fetchone()
-                            print(">>> Successfully saved new participant data to database")
-
-                            # Insert the same record into history
-                            history_query = """
-                            INSERT INTO bdt.participant_data_history (
-                                name, real_age, gender, estimated_cognitive_age, 
-                                cognitive_fitness, avg_time_all, avg_time_1, 
-                                avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                                avg_time_6, avg_time_7, avg_time_8, created_at
-                            ) VALUES (
-                                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                            )
-                            """
-                            history_values = values + (new_participant[1],)  # Use the same created_at
-                            cursor.execute(history_query, history_values)
-                            print(">>> Added initial history record for new participant")
-                                    
-                        conn.commit()
-                                
-                    # Close the connection
-                    conn.close()
-
-            except Exception as e:
-                print(">>> Error saving to database:")
-                print(f"Error: {e}")
-                if 'conn' in locals():
-                    conn.rollback()
-            finally:
-                if 'conn' in locals() and conn is not None:
-                    conn.close()
-
-            IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg')
-            self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(400 , 400))
-            self.image_label.configure(image=self.image)
-            self.show_retry_button()
-        
+        elif self.current_question > self.max_level:
+            self.end_test()
     
     def get_random_variant(self, level):
         """Get a random variant (a-d) for the specified level."""
@@ -1488,32 +1509,35 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        play_audio("AUDIO/lanjut_lvl2.wav")
-                        # tts_indo("Lanjut ke level dua.")
+                        if self.max_level == 1:
+                            self.end_test()
+                        else:
+                            play_audio("AUDIO/lanjut_lvl2.wav")
+                            # tts_indo("Lanjut ke level dua.")
 
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        self.current_question = 2
-                        variant = self.get_random_variant(self.current_question)
-                        self.current_variant = variant
-                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        frame_width = 400  # Adjust based on your needs
-                        frame_height = 400  # Adjust based on your needs
-        
-                        # Load and resize the initial image
-                        IMAGE_PATH = LEVEL_PATHS[variant]
-                        self.image = customtkinter.CTkImage(
-                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                            size=(frame_width, frame_height)
-                        )
-                        self.image_label.configure(image=self.image)
-                        self.current_level_button.grid_remove()
-                        self.show_current_level_button(self.current_question)
-                        self.task_flag_01 = False
-                        self.start_task = time.time()
-                        # Reset and start the timer
-                        self.reset_timer()
-                        self.start_timer()
+                            #IMAGE_WIDTH = 650
+                            #IMAGE_HEIGHT = 650
+                            self.current_question = 2
+                            variant = self.get_random_variant(self.current_question)
+                            self.current_variant = variant
+                            current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                            frame_width = 400  # Adjust based on your needs
+                            frame_height = 400  # Adjust based on your needs
+            
+                            # Load and resize the initial image
+                            IMAGE_PATH = LEVEL_PATHS[variant]
+                            self.image = customtkinter.CTkImage(
+                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                                size=(frame_width, frame_height)
+                            )
+                            self.image_label.configure(image=self.image)
+                            self.current_level_button.grid_remove()
+                            self.show_current_level_button(self.current_question)
+                            self.task_flag_01 = False
+                            self.start_task = time.time()
+                            # Reset and start the timer
+                            self.reset_timer()
+                            self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1577,32 +1601,35 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        play_audio("AUDIO/lanjut_lvl3.wav")
-                        # tts_indo("Lanjut ke level tiga")
+                        if self.max_level == 2:
+                            self.end_test()
+                        else:
+                            play_audio("AUDIO/lanjut_lvl3.wav")
+                            # tts_indo("Lanjut ke level tiga")
 
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        self.current_question = 3
-                        variant = self.get_random_variant(self.current_question)
-                        self.current_variant = variant
-                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        frame_width = 400  # Adjust based on your needs
-                        frame_height = 400  # Adjust based on your needs
-        
-                        # Load and resize the initial image
-                        IMAGE_PATH = LEVEL_PATHS[variant]
-                        self.image = customtkinter.CTkImage(
-                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                            size=(frame_width, frame_height)
-                        )
-                        self.image_label.configure(image=self.image)
-                        self.current_level_button.grid_remove()
-                        self.show_current_level_button(self.current_question)
-                        self.task_flag_02 = False
-                        self.start_task = time.time()
-                        # Reset and start the timer
-                        self.reset_timer()
-                        self.start_timer()
+                            #IMAGE_WIDTH = 650
+                            #IMAGE_HEIGHT = 650
+                            self.current_question = 3
+                            variant = self.get_random_variant(self.current_question)
+                            self.current_variant = variant
+                            current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                            frame_width = 400  # Adjust based on your needs
+                            frame_height = 400  # Adjust based on your needs
+            
+                            # Load and resize the initial image
+                            IMAGE_PATH = LEVEL_PATHS[variant]
+                            self.image = customtkinter.CTkImage(
+                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                                size=(frame_width, frame_height)
+                            )
+                            self.image_label.configure(image=self.image)
+                            self.current_level_button.grid_remove()
+                            self.show_current_level_button(self.current_question)
+                            self.task_flag_02 = False
+                            self.start_task = time.time()
+                            # Reset and start the timer
+                            self.reset_timer()
+                            self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1666,32 +1693,35 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        play_audio("AUDIO/lanjut_lvl4.wav")
-                        # tts_indo("Lanjut ke level empat.")
+                        if self.max_level == 3:
+                            self.end_test()
+                        else:
+                            play_audio("AUDIO/lanjut_lvl4.wav")
+                            # tts_indo("Lanjut ke level empat.")
 
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        self.current_question = 4
-                        variant = self.get_random_variant(self.current_question)
-                        self.current_variant = variant
-                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        frame_width = 400  # Adjust based on your needs
-                        frame_height = 400  # Adjust based on your needs
-        
-                        # Load and resize the initial image
-                        IMAGE_PATH = LEVEL_PATHS[variant]
-                        self.image = customtkinter.CTkImage(
-                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                            size=(frame_width, frame_height)
-                        )
-                        self.image_label.configure(image=self.image)
-                        self.current_level_button.grid_remove()
-                        self.show_current_level_button(self.current_question)
-                        self.task_flag_03 = False
-                        self.start_task = time.time()
-                        # Reset and start the timer
-                        self.reset_timer()
-                        self.start_timer()
+                            #IMAGE_WIDTH = 650
+                            #IMAGE_HEIGHT = 650
+                            self.current_question = 4
+                            variant = self.get_random_variant(self.current_question)
+                            self.current_variant = variant
+                            current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                            frame_width = 400  # Adjust based on your needs
+                            frame_height = 400  # Adjust based on your needs
+            
+                            # Load and resize the initial image
+                            IMAGE_PATH = LEVEL_PATHS[variant]
+                            self.image = customtkinter.CTkImage(
+                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                                size=(frame_width, frame_height)
+                            )
+                            self.image_label.configure(image=self.image)
+                            self.current_level_button.grid_remove()
+                            self.show_current_level_button(self.current_question)
+                            self.task_flag_03 = False
+                            self.start_task = time.time()
+                            # Reset and start the timer
+                            self.reset_timer()
+                            self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1755,32 +1785,35 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        play_audio("AUDIO/lanjut_lvl5.wav")
-                        # tts_indo("Lanjut ke level lima")
+                        if self.max_level == 4:
+                            self.end_test()
+                        else:
+                            play_audio("AUDIO/lanjut_lvl5.wav")
+                            # tts_indo("Lanjut ke level lima")
 
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        self.current_question = 5
-                        variant = self.get_random_variant(self.current_question)
-                        self.current_variant = variant
-                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        frame_width = 400  # Adjust based on your needs
-                        frame_height = 400  # Adjust based on your needs
-        
-                        # Load and resize the initial image
-                        IMAGE_PATH = LEVEL_PATHS[variant]
-                        self.image = customtkinter.CTkImage(
-                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                            size=(frame_width, frame_height)
-                        )
-                        self.image_label.configure(image=self.image)
-                        self.current_level_button.grid_remove()
-                        self.show_current_level_button(self.current_question)
-                        self.task_flag_04 = False
-                        self.start_task = time.time()
-                        # Reset and start the timer
-                        self.reset_timer()
-                        self.start_timer()
+                            #IMAGE_WIDTH = 650
+                            #IMAGE_HEIGHT = 650
+                            self.current_question = 5
+                            variant = self.get_random_variant(self.current_question)
+                            self.current_variant = variant
+                            current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                            frame_width = 400  # Adjust based on your needs
+                            frame_height = 400  # Adjust based on your needs
+            
+                            # Load and resize the initial image
+                            IMAGE_PATH = LEVEL_PATHS[variant]
+                            self.image = customtkinter.CTkImage(
+                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                                size=(frame_width, frame_height)
+                            )
+                            self.image_label.configure(image=self.image)
+                            self.current_level_button.grid_remove()
+                            self.show_current_level_button(self.current_question)
+                            self.task_flag_04 = False
+                            self.start_task = time.time()
+                            # Reset and start the timer
+                            self.reset_timer()
+                            self.start_timer()
 
                     # Detect Thumb
                     """
@@ -1845,32 +1878,35 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        play_audio("AUDIO/lanjut_lvl6.wav")
-                        # tts_indo("Lanjut ke level enam.")
+                        if self.max_level == 5:
+                            self.end_test()
+                        else:
+                            play_audio("AUDIO/lanjut_lvl6.wav")
+                            # tts_indo("Lanjut ke level enam.")
 
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        self.current_question = 6
-                        variant = self.get_random_variant(self.current_question)
-                        self.current_variant = variant
-                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        frame_width = 400  # Adjust based on your needs
-                        frame_height = 400  # Adjust based on your needs
-        
-                        # Load and resize the initial image
-                        IMAGE_PATH = LEVEL_PATHS[variant]
-                        self.image = customtkinter.CTkImage(
-                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                            size=(frame_width, frame_height)
-                        )
-                        self.image_label.configure(image=self.image)
-                        self.current_level_button.grid_remove()
-                        self.show_current_level_button(self.current_question)
-                        self.task_flag_05 = False
-                        self.start_task = time.time()
-                        # Reset and start the timer
-                        self.reset_timer()
-                        self.start_timer()
+                            #IMAGE_WIDTH = 650
+                            #IMAGE_HEIGHT = 650
+                            self.current_question = 6
+                            variant = self.get_random_variant(self.current_question)
+                            self.current_variant = variant
+                            current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                            frame_width = 400  # Adjust based on your needs
+                            frame_height = 400  # Adjust based on your needs
+            
+                            # Load and resize the initial image
+                            IMAGE_PATH = LEVEL_PATHS[variant]
+                            self.image = customtkinter.CTkImage(
+                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                                size=(frame_width, frame_height)
+                            )
+                            self.image_label.configure(image=self.image)
+                            self.current_level_button.grid_remove()
+                            self.show_current_level_button(self.current_question)
+                            self.task_flag_05 = False
+                            self.start_task = time.time()
+                            # Reset and start the timer
+                            self.reset_timer()
+                            self.start_timer()
                     
                     # Detect Thumb
                     """
@@ -1935,32 +1971,35 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        play_audio("AUDIO/lanjut_lvl7.wav")
-                        # tts_indo("Lanjut ke level tujuh.")
+                        if self.max_level == 6:
+                            self.end_test()
+                        else:
+                            play_audio("AUDIO/lanjut_lvl7.wav")
+                            # tts_indo("Lanjut ke level tujuh.")
 
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        self.current_question = 7
-                        variant = self.get_random_variant(self.current_question)
-                        self.current_variant = variant
-                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        frame_width = 400  # Adjust based on your needs
-                        frame_height = 400  # Adjust based on your needs
-        
-                        # Load and resize the initial image
-                        IMAGE_PATH = LEVEL_PATHS[variant]
-                        self.image = customtkinter.CTkImage(
-                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                            size=(frame_width, frame_height)
-                        )
-                        self.image_label.configure(image=self.image)
-                        self.current_level_button.grid_remove()
-                        self.show_current_level_button(self.current_question)
-                        self.task_flag_06 = False
-                        self.start_task = time.time()
-                        # Reset and start the timer
-                        self.reset_timer()
-                        self.start_timer()
+                            #IMAGE_WIDTH = 650
+                            #IMAGE_HEIGHT = 650
+                            self.current_question = 7
+                            variant = self.get_random_variant(self.current_question)
+                            self.current_variant = variant
+                            current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                            frame_width = 400  # Adjust based on your needs
+                            frame_height = 400  # Adjust based on your needs
+            
+                            # Load and resize the initial image
+                            IMAGE_PATH = LEVEL_PATHS[variant]
+                            self.image = customtkinter.CTkImage(
+                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                                size=(frame_width, frame_height)
+                            )
+                            self.image_label.configure(image=self.image)
+                            self.current_level_button.grid_remove()
+                            self.show_current_level_button(self.current_question)
+                            self.task_flag_06 = False
+                            self.start_task = time.time()
+                            # Reset and start the timer
+                            self.reset_timer()
+                            self.start_timer()
 
                     # Detect Thumb
                     """
@@ -2024,32 +2063,35 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        play_audio("AUDIO/lanjut_lvl8.wav")
-                        # tts_indo("Lanjut ke level delapan.")
+                        if self.max_level == 7:
+                            self.end_test()
+                        else:
+                            play_audio("AUDIO/lanjut_lvl8.wav")
+                            # tts_indo("Lanjut ke level delapan.")
 
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        self.current_question = 8
-                        variant = self.get_random_variant(self.current_question)
-                        self.current_variant = variant
-                        current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                        frame_width = 400  # Adjust based on your needs
-                        frame_height = 400  # Adjust based on your needs
-        
-                        # Load and resize the initial image
-                        IMAGE_PATH = LEVEL_PATHS[variant]
-                        self.image = customtkinter.CTkImage(
-                            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                            size=(frame_width, frame_height)
-                        )
-                        self.image_label.configure(image=self.image)
-                        self.current_level_button.grid_remove()
-                        self.show_current_level_button(self.current_question)
-                        self.task_flag_07 = False
-                        self.start_task = time.time()
-                        # Reset and start the timer
-                        self.reset_timer()
-                        self.start_timer()
+                            #IMAGE_WIDTH = 650
+                            #IMAGE_HEIGHT = 650
+                            self.current_question = 8
+                            variant = self.get_random_variant(self.current_question)
+                            self.current_variant = variant
+                            current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
+                            frame_width = 400  # Adjust based on your needs
+                            frame_height = 400  # Adjust based on your needs
+            
+                            # Load and resize the initial image
+                            IMAGE_PATH = LEVEL_PATHS[variant]
+                            self.image = customtkinter.CTkImage(
+                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
+                                size=(frame_width, frame_height)
+                            )
+                            self.image_label.configure(image=self.image)
+                            self.current_level_button.grid_remove()
+                            self.show_current_level_button(self.current_question)
+                            self.task_flag_07 = False
+                            self.start_task = time.time()
+                            # Reset and start the timer
+                            self.reset_timer()
+                            self.start_timer()
 
                     # Detect Thumb
                     """
@@ -2113,232 +2155,8 @@ class TimeIn(customtkinter.CTk):
                             play_audio("AUDIO/jangan_menyerah.wav")
                             # tts_indo("Jangan menyerah.")
 
-                        # Stop the timer
-                        self.reset_timer()
-                        self.stop_timer()  
-
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        # IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
-                        # self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(IMAGE_WIDTH , IMAGE_HEIGHT))
-                        # self.label = customtkinter.CTkLabel(master=self.design_frame_1, image=self.image, text='')
-                        # self.label.grid(column=0, row=0)
-
                         self.task_flag_08 = False
-                        self.current_level_button.grid_remove()
-                        # self.start_task = time.time()
-                    
-                        self.timer_task_avg = format(float(sum(self.timer_task_all) / len(self.timer_task_all)), ".3f")
-                        cognitive_age_avg = int(sum(self.cognitive_age_list) / len(self.cognitive_age_list))
-                        #t_thumb_avg = int(sum(t_thumb_all)) / len(t_thumb_all)
-
-                        print("-------------------------------------------")
-                        print("BLOCK DESIGN TEST ")
-                        print("-------------------------------------------")
-                        print("GRASP_POSTURE : " + str(grasp_pose))
-                        print("TIMER_TASK    : " + str(self.timer_task_all))
-                        print("TIMER_THUMB   : " + str(t_thumb_all))
-                        print("COGNITIVE_AGE : " + str(self.cognitive_age_list))
-                        print("-------------------------------------------")
-
-                        age_real = int(self.age_range_code)
-                        age_cog = cognitive_age_avg
-
-                        visuo_spatial = 100
-
-                        if (age_cog <= age_real):
-                            visuo_spatial = 100 
-                        else:
-                            visuo_spatial = 100 - (age_cog-age_real)
-
-                        print("Your name is " + self.nick_name)
-                        print("Your gender is " + self.gender_code)
-                        print("Your Average Completed Time is " + str( self.timer_task_avg) +" second")
-                        print("Your Current Age is " + str( age_real ) +" years")
-                        print("Your Cognitive Age is " + str( age_cog ) +" years")
-                        print("Your Cognitive Fitness is " + str( visuo_spatial ) +" %")
-
-                        play_audio("AUDIO/selesai.wav")
-                        # tts_indo("Permainan Blok Desain Tes sudah selesai")
-                        #SpeakTextG("平均完了時間は " + str( self.timer_task_avg) +" 秒です")
-                        #SpeakTextG("あなたの現在の年齢は " + str( age_real) +" 歳です")
-                        # tts_indo("Estimasi usia kognitifmu adalah" + number_to_words_id(age_cog) +" tahun")
-                        #SpeakTextG("あなたの認知能力は " + str(visuo_spatial ) +" %")
-                        
-                       # SpeakTextG("画面上の鍵でフクロウを入手できます。ありがとうございます。") #お疲れさまでした。
-
-                        time.sleep(3)
-
-                        # Save results to PostgreSQL database
-                        try:
-                            conn = get_db_connection()
-                            if conn:
-                                with conn.cursor() as cursor:
-                                    # First, check if participant exists (case-insensitive name match)
-                                    check_query = """
-                                    SELECT id FROM bdt.participant_data 
-                                    WHERE LOWER(name) = LOWER(%s) 
-                                    AND real_age = %s 
-                                    AND gender = %s
-                                    LIMIT 1
-                                    """
-                                    cursor.execute(check_query, (
-                                        self.nick_name,
-                                        int(self.age_range_code),
-                                        self.gender_code
-                                    ))
-                                    participant = cursor.fetchone()
-
-                                    # Prepare the values tuple
-                                    values = (
-                                        self.nick_name,                      # name
-                                        int(self.age_range_code),           # real_age
-                                        self.gender_code,                   # gender
-                                        int(age_cog),                       # estimated_cognitive_age
-                                        f"{visuo_spatial}%",                # cognitive_fitness
-                                        float(self.timer_task_avg),         # avg_time_all
-                                        float(self.timer_task_all[0]) if len(self.timer_task_all) > 0 else None,  # avg_time_1
-                                        float(self.timer_task_all[1]) if len(self.timer_task_all) > 1 else None,  # avg_time_2
-                                        float(self.timer_task_all[2]) if len(self.timer_task_all) > 2 else None,  # avg_time_3
-                                        float(self.timer_task_all[3]) if len(self.timer_task_all) > 3 else None,  # avg_time_4
-                                        float(self.timer_task_all[4]) if len(self.timer_task_all) > 4 else None,  # avg_time_5
-                                        float(self.timer_task_all[5]) if len(self.timer_task_all) > 5 else None,  # avg_time_6
-                                        float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else None,  # avg_time_7
-                                        float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
-                                    )
-
-                                    if participant:
-                                        # Update existing record in participant_data
-                                        update_query = """
-                                        UPDATE bdt.participant_data 
-                                        SET 
-                                            estimated_cognitive_age = %s,
-                                            cognitive_fitness = %s,
-                                            avg_time_all = %s,
-                                            avg_time_1 = %s,
-                                            avg_time_2 = %s,
-                                            avg_time_3 = %s,
-                                            avg_time_4 = %s,
-                                            avg_time_5 = %s,
-                                            avg_time_6 = %s,
-                                            avg_time_7 = %s,
-                                            avg_time_8 = %s,
-                                            updated_at = CURRENT_TIMESTAMP
-                                        WHERE id = %s
-                                        RETURNING id, updated_at
-                                        """
-                                        # Reorder values for update (exclude name, age, gender and add id at the end)
-                                        update_values = values[3:] + (participant[0],)
-                                        cursor.execute(update_query, update_values)
-                                        updated_participant = cursor.fetchone()
-                                        print(">>> Successfully updated existing participant data in database")
-
-                                        # Insert history record with the original created_at
-                                        history_query = """
-                                        INSERT INTO bdt.participant_data_history (
-                                            name, real_age, gender, estimated_cognitive_age, 
-                                            cognitive_fitness, avg_time_all, avg_time_1, 
-                                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                                            avg_time_6, avg_time_7, avg_time_8, created_at
-                                        ) VALUES (
-                                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                                        )
-                                        """
-                                        history_values = values + (updated_participant[1],) # Use the same updated_at
-                                        cursor.execute(history_query, history_values)
-                                        print(">>> Added history record for updated participant")
-
-                                    else:
-                                        # Insert new record into participant_data
-                                        insert_query = """
-                                        INSERT INTO bdt.participant_data (
-                                            name, real_age, gender, estimated_cognitive_age, 
-                                            cognitive_fitness, avg_time_all, avg_time_1, 
-                                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                                            avg_time_6, avg_time_7, avg_time_8, created_at
-                                        ) VALUES (
-                                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
-                                        )
-                                        RETURNING id, created_at
-                                        """
-                                        cursor.execute(insert_query, values)
-                                        new_participant = cursor.fetchone()
-                                        print(">>> Successfully saved new participant data to database")
-
-                                        # Insert the same record into history
-                                        history_query = """
-                                        INSERT INTO bdt.participant_data_history (
-                                            name, real_age, gender, estimated_cognitive_age, 
-                                            cognitive_fitness, avg_time_all, avg_time_1, 
-                                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                                            avg_time_6, avg_time_7, avg_time_8, created_at
-                                        ) VALUES (
-                                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                                        )
-                                        """
-                                        history_values = values + (new_participant[1],)  # Use the same created_at
-                                        cursor.execute(history_query, history_values)
-                                        print(">>> Added initial history record for new participant")
-                                    
-                                    conn.commit()
-                                
-                                # Close the connection
-                                conn.close()
-
-                        except Exception as e:
-                            print(">>> Error saving to database:")
-                            print(f"Error: {e}")
-                            if 'conn' in locals():
-                                conn.rollback()
-                        finally:
-                            if 'conn' in locals() and conn is not None:
-                                conn.close()
-
-                        #if cognitive_age_avg <= 30:
-                        #    SpeakTextG("あなたの推定認知年齢は 30 歳未満です")
-                        #elif cognitive_age_avg > 30 and cognitive_age_avg <= 40 :
-                        #    SpeakTextG("あなたの推定認知年齢は 40 歳から 50 歳の間です")
-                        #elif cognitive_age_avg > 40 and cognitive_age_avg <= 50 :
-                        #    SpeakTextG("あなたの推定認知年齢は 40 歳から 50 歳の間です")
-                        #elif cognitive_age_avg > 50 and cognitive_age_avg <= 60 :
-                        #    SpeakTextG("あなたの推定認知年齢は 50 歳から 60 歳の間です")
-                        #elif cognitive_age_avg > 60 and cognitive_age_avg <= 70 :
-                        #    SpeakTextG("あなたの推定認知年齢は 60 歳から 70 歳の間です")
-                        #elif cognitive_age_avg > 70 :
-                        #    SpeakTextG("あなたの推定認知年齢は 70 歳を超えています")
-
-                        #SpeakTextG("ブロックゲームにご参加いただきありがとうございます。")
-                        #SpeakTextG("また会いましょう、さようなら。")
-                        
-                        #>>>>>>>>>>>>>>>>>>>>>>
-
-                        #IMAGE_WIDTH = 650
-                        #IMAGE_HEIGHT = 650
-                        IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg')
-                        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(400 , 400))
-                        self.image_label.configure(image=self.image)
-                        self.task_flag_08 = False
-                        
-                        self.show_retry_button()
-
-                        #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                        #break
-
-                    # Detect Thumb
-                    """
-                    if (thumb_state == 1 and thumb_flag_08 == True):
-                        end_thumb = time.time()
-                        timer_thumb = end_thumb - start_thumb
-                        t_thumb_08 = round((timer_thumb - self.timer_task_08), 2)
-                        t_thumb_all.append(t_thumb_08)
-
-                        start_thumb = time.time()
-                        thumb_flag_08 = False
-
-                        timer_speak = self.timer_task_08
-                        if timer_speak < 10:
-                            SpeakTextG("Congratulations you did it !")
-                    """
+                        self.end_test()
                 else:
                     #print ("NOT COMPLETE")
                     pass
