@@ -765,6 +765,10 @@ class TimeIn(customtkinter.CTk):
         self.timer_running = False
         self.start_time = 0
 
+        # Configure column weights for left_side (block design) and content_container (camera)
+        self.left_side.grid_columnconfigure(1, weight=1)  # Block design column
+        self.content_container.grid_columnconfigure(1, weight=3)  # Camera column (3x wider than block design)
+
         # Design frames next to the timer
         self.design_frame_0 = TextFrame(self.left_side, "Block Design")
         self.design_frame_0.grid(row=0, column=1, padx=0, pady=(0, 5), sticky="nsew")
