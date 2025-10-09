@@ -1,8 +1,7 @@
 numpy
 opencv-python
 torch
-torchvision
-torchaudio
+soundfile
 gitpython
 customtkinter
 gtts
@@ -20,6 +19,4 @@ scikit-learn
 psycopg2-binary
 python-dotenv
 mediapipe
-coqui-tts
-g2p-id@ git+https://github.com/Wikidepia/g2p-id.git
 ultralytics
