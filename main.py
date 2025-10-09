@@ -791,26 +791,30 @@ class TimeIn(customtkinter.CTk):
         
         # Adjust image sizes to fit the frames
         if DISPLAY_HALF:
-            frame_width = 400
-            frame_height = 400
+            self.frame_width = 400
+            self.frame_height = 400
         else:
-            frame_width = 500
-            frame_height = 500
+            self.frame_width = 500
+            self.frame_height = 500
         
         # Load and resize the initial image
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg')
         self.image = customtkinter.CTkImage(
-            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-            size=(frame_width, frame_height)
+            light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+            size=(self.frame_width, self.frame_height)
         )
         # Create the label once and store it as an instance variable
         self.image_label = customtkinter.CTkLabel(master=self.design_frame_1, text='')
         self.image_label.pack(expand=True, fill="both")
         self.image_label.configure(image=self.image)
 
-        # Camera label
+        # Camera label - Configure grid for video_frame_1
+        self.video_frame_1.grid_rowconfigure(0, weight=1)
+        self.video_frame_1.grid_columnconfigure(0, weight=1)
+        
+        # Create camera label with grid
         self.camera = customtkinter.CTkLabel(self.video_frame_1, text="", anchor="center")
-        self.camera.pack(expand=True, fill="both")
+        self.camera.grid(row=0, column=0, sticky="nsew")
 
         # Add the start button
         button_font_size = 30 if DISPLAY_HALF else 36
@@ -1278,14 +1282,12 @@ class TimeIn(customtkinter.CTk):
         if 1 <= self.current_question <= self.max_level:
             variant = self.get_random_variant(self.current_question)
             self.current_variant = variant
-            frame_width = 400  # Adjust based on your needs
-            frame_height = 400  # Adjust based on your needs
             
             # Load and display the next level's image
             IMAGE_PATH = LEVEL_PATHS[variant]
             self.image = customtkinter.CTkImage(
-                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                size=(frame_width, frame_height)
+                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                size=(self.frame_width, self.frame_height)
             )
             self.image_label.configure(image=self.image)
             self.current_level_button.grid_remove()
@@ -1319,17 +1321,13 @@ class TimeIn(customtkinter.CTk):
         print("START")
         #self.start_task = time.time()
         
-
-        frame_width = 400  # Adjust based on your needs
-        frame_height = 400  # Adjust based on your needs
-        
         # Load and resize the initial image
         variant = self.get_random_variant(self.current_question)
         self.current_variant = variant
         IMAGE_PATH = LEVEL_PATHS[variant]
         self.image = customtkinter.CTkImage(
-            light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-            size=(frame_width, frame_height)
+            light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+            size=(self.frame_width, self.frame_height)
         )
         self.image_label.configure(image=self.image)
         self.start_task = time.time()
@@ -1487,9 +1485,6 @@ class TimeIn(customtkinter.CTk):
             list_tracked_objects = df_tracked_objects.values.tolist()
 
         #if len(list_tracked_objects) == 4: #>0
-
-        frame_width = 400  # Adjust based on your needs
-        frame_height = 400  # Adjust based on your needs
         
         box_num = 0
         box_face = 0
@@ -1698,14 +1693,12 @@ class TimeIn(customtkinter.CTk):
                             variant = self.get_random_variant(self.current_question)
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                            frame_width = 400  # Adjust based on your needs
-                            frame_height = 400  # Adjust based on your needs
             
                             # Load and resize the initial image
                             IMAGE_PATH = LEVEL_PATHS[variant]
                             self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                                size=(frame_width, frame_height)
+                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                                size=(self.frame_width, self.frame_height)
                             )
                             self.image_label.configure(image=self.image)
                             self.current_level_button.grid_remove()
@@ -1790,14 +1783,12 @@ class TimeIn(customtkinter.CTk):
                             variant = self.get_random_variant(self.current_question)
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                            frame_width = 400  # Adjust based on your needs
-                            frame_height = 400  # Adjust based on your needs
             
                             # Load and resize the initial image
                             IMAGE_PATH = LEVEL_PATHS[variant]
                             self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                                size=(frame_width, frame_height)
+                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                                size=(self.frame_width, self.frame_height)
                             )
                             self.image_label.configure(image=self.image)
                             self.current_level_button.grid_remove()
@@ -1882,14 +1873,12 @@ class TimeIn(customtkinter.CTk):
                             variant = self.get_random_variant(self.current_question)
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                            frame_width = 400  # Adjust based on your needs
-                            frame_height = 400  # Adjust based on your needs
             
                             # Load and resize the initial image
                             IMAGE_PATH = LEVEL_PATHS[variant]
                             self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                                size=(frame_width, frame_height)
+                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                                size=(self.frame_width, self.frame_height)
                             )
                             self.image_label.configure(image=self.image)
                             self.current_level_button.grid_remove()
@@ -1974,14 +1963,12 @@ class TimeIn(customtkinter.CTk):
                             variant = self.get_random_variant(self.current_question)
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                            frame_width = 400  # Adjust based on your needs
-                            frame_height = 400  # Adjust based on your needs
             
                             # Load and resize the initial image
                             IMAGE_PATH = LEVEL_PATHS[variant]
                             self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                                size=(frame_width, frame_height)
+                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                                size=(self.frame_width, self.frame_height)
                             )
                             self.image_label.configure(image=self.image)
                             self.current_level_button.grid_remove()
@@ -2067,14 +2054,12 @@ class TimeIn(customtkinter.CTk):
                             variant = self.get_random_variant(self.current_question)
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                            frame_width = 400  # Adjust based on your needs
-                            frame_height = 400  # Adjust based on your needs
             
                             # Load and resize the initial image
                             IMAGE_PATH = LEVEL_PATHS[variant]
                             self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                                size=(frame_width, frame_height)
+                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                                size=(self.frame_width, self.frame_height)
                             )
                             self.image_label.configure(image=self.image)
                             self.current_level_button.grid_remove()
@@ -2160,14 +2145,12 @@ class TimeIn(customtkinter.CTk):
                             variant = self.get_random_variant(self.current_question)
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                            frame_width = 400  # Adjust based on your needs
-                            frame_height = 400  # Adjust based on your needs
             
                             # Load and resize the initial image
                             IMAGE_PATH = LEVEL_PATHS[variant]
                             self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                                size=(frame_width, frame_height)
+                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                                size=(self.frame_width, self.frame_height)
                             )
                             self.image_label.configure(image=self.image)
                             self.current_level_button.grid_remove()
@@ -2252,14 +2235,12 @@ class TimeIn(customtkinter.CTk):
                             variant = self.get_random_variant(self.current_question)
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
-                            frame_width = 400  # Adjust based on your needs
-                            frame_height = 400  # Adjust based on your needs
             
                             # Load and resize the initial image
                             IMAGE_PATH = LEVEL_PATHS[variant]
                             self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((frame_width, frame_height), Image.Resampling.LANCZOS),
-                                size=(frame_width, frame_height)
+                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
+                                size=(self.frame_width, self.frame_height)
                             )
                             self.image_label.configure(image=self.image)
                             self.current_level_button.grid_remove()
@@ -2356,11 +2337,28 @@ class TimeIn(customtkinter.CTk):
                 for hand_landmarks in hand_result.multi_hand_landmarks:
                     mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_style, connection_style)
 
-        img = Image.fromarray(frame)
+        # Convert frame to ImageTk format
+        img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        
+        # Calculate aspect ratio
+        frame_height, frame_width = frame.shape[:2]
+        container_width = self.video_frame_1.winfo_width()
+        container_height = self.video_frame_1.winfo_height()
+        
+        # Calculate scaling factor while maintaining aspect ratio
+        width_ratio = container_width / frame_width
+        height_ratio = container_height / frame_height
+        scale = min(width_ratio, height_ratio)
+        
+        # Resize image if needed
+        if scale < 1:
+            new_width = int(frame_width * scale)
+            new_height = int(frame_height * scale)
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
         ImgTks = ImageTk.PhotoImage(image=img)
         self.camera.imgtk = ImgTks
         self.camera.configure(image=ImgTks)
-        self.camera.grid(column=0, row=0, padx=0, pady=0, sticky="nswe")
 
         self.after(20, self.streaming)
 
