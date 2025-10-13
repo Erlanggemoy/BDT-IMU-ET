@@ -646,8 +646,8 @@ if platform.system() == 'Windows':
 else:  # Linux/Mac
     cap = cv2.VideoCapture(0)  # atau cv2.CAP_V4L2
 
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)      #1280   640
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)     #720    480
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)      #1280   640
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)     #720    480
 
 print(">>> Start Test ...")
 
@@ -794,8 +794,8 @@ class TimeIn(customtkinter.CTk):
             self.frame_width = 400
             self.frame_height = 400
         else:
-            self.frame_width = 500
-            self.frame_height = 500
+            self.frame_width = 200
+            self.frame_height = 200
         
         # Load and resize the initial image
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg')
@@ -2338,7 +2338,8 @@ class TimeIn(customtkinter.CTk):
                     mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_style, connection_style)
 
         # Convert frame to ImageTk format
-        img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        # img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        img = Image.fromarray(frame)
         
         # Calculate aspect ratio
         frame_height, frame_width = frame.shape[:2]
