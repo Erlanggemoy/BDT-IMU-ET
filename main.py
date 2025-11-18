@@ -6,9 +6,13 @@ import os
 import math
 import time
 import socket
+import threading
+from queue import Queue
 from text_utils import number_to_words_id
 from dotenv import load_dotenv
 from pathlib import Path
+import serial
+import serial.tools.list_ports
 
  # Load environment variables from .env file
 env_path = Path('.') / '.env'
@@ -17,6 +21,8 @@ load_dotenv(dotenv_path=env_path)
 # Get display mode from environment variable (default to True if not set or invalid)
 DISPLAY_HALF = os.getenv('DISPLAY_HALF', 'true').lower() == 'true'
 NORMAL_PATTERN = os.getenv('NORMAL_PATTERN', 'true').lower() == 'true'
+BUTTON_MODE = os.getenv('BUTTON_MODE', 'false').lower() == 'true'
+HIDE_CAMERA = os.getenv('HIDE_CAMERA', 'false').lower() == 'true'
 
 # Get max level from environment variable (default to 8 if not set or invalid)
 try:
@@ -87,7 +93,7 @@ if USE_BANTAL_MODEL:
             sys.path.insert(0, os.path.join(BASE_DIR, 'MODEL', 'yolov5'))
             from models.experimental import attempt_load
             
-            model_yolo = attempt_load(PATH_MODEL, device='cpu')
+            model_yolo = attempt_load(PATH_MODEL, device=device)
             
             # Inisialisasi grid untuk model lama
             for m in model_yolo.modules():
@@ -584,7 +590,7 @@ class App_Input(customtkinter.CTk): #CTkToplevel
         self.button = customtkinter.CTkButton(self, text="SUBMIT", command=self.button_callback, font=("Helvetica",30))
         self.button.grid(row=2, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
 
-        play_audio("AUDIO/selamat_datang.wav")
+        #play_audio("AUDIO/selamat_datang.wav")
         # tts_indo("Selamat datang di permainan Blok Desain Tes.") #名前、年齢、性別を入力してください。
         #SpeakTextG("... ")
 
@@ -679,6 +685,160 @@ class ImageFrame(customtkinter.CTkFrame):
 
 
 
+class YOLODetectionThread(threading.Thread):
+    """Background thread for YOLO inference to prevent GUI blocking"""
+    def __init__(self, model, use_bantal_model):
+        super().__init__(daemon=True)
+        self.model = model
+        self.use_bantal_model = use_bantal_model
+        self.frame_queue = Queue(maxsize=1)  # Reduce to 1 for less memory
+        self.result_queue = Queue(maxsize=1)
+        self.running = True
+        self.inference_count = 0
+        self.last_inference_time = 0
+        print(">>> YOLO thread initialized")
+        
+    def run(self):
+        print(">>> YOLO thread started")
+        while self.running:
+            try:
+                if not self.frame_queue.empty():
+                    frame = self.frame_queue.get(timeout=0.01)
+                    
+                    # Measure inference time
+                    start_time = time.time()
+                    
+                    # YOLO inference
+                    if self.use_bantal_model:
+                        results = self.model(frame, verbose=False)
+                        
+                        # Convert Ultralytics results to list format
+                        if len(results) > 0 and hasattr(results[0], 'boxes'):
+                            boxes = results[0].boxes
+                            detections = []
+                            
+                            for box in boxes:
+                                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                                conf = box.conf[0].cpu().numpy()
+                                cls = int(box.cls[0].cpu().numpy())
+                                detections.append([x1, y1, x2, y2, conf, cls, ''])
+                            
+                            list_tracked_objects = detections
+                        else:
+                            list_tracked_objects = []
+                    else:
+                        results = self.model(frame)
+                        df_tracked_objects = results.pandas().xyxy[0]
+                        list_tracked_objects = df_tracked_objects.values.tolist()
+                    
+                    self.last_inference_time = (time.time() - start_time) * 1000
+                    self.inference_count += 1
+                    
+                    # Debug output every 30 inferences
+                    if self.inference_count % 30 == 0:
+                        print(f">>> YOLO: {self.inference_count} inferences, last: {self.last_inference_time:.1f}ms")
+                    
+                    # Put results in queue (remove old if full)
+                    if self.result_queue.full():
+                        try:
+                            self.result_queue.get_nowait()
+                        except:
+                            pass
+                    self.result_queue.put(list_tracked_objects)
+                else:
+                    time.sleep(0.001)
+            except Exception as e:
+                print(f"YOLO thread error: {e}")
+                import traceback
+                traceback.print_exc()
+                time.sleep(0.01)
+    
+    def stop(self):
+        self.running = False
+        print(">>> YOLO thread stopped")
+
+
+class SerialReaderThread(threading.Thread):
+    """Background thread for reading serial data from ESP32"""
+    def __init__(self, port=None, baudrate=115200):
+        super().__init__(daemon=True)
+        self.port = port
+        self.baudrate = baudrate
+        self.serial_conn = None
+        self.running = True
+        self.message_queue = Queue(maxsize=10)
+        
+        # Auto-detect ESP32 port if not specified
+        if not self.port:
+            self.port = self.find_esp32_port()
+        
+        if self.port:
+            try:
+                self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0.1)
+                print(f">>> Serial connected to {self.port} at {self.baudrate} baud")
+            except Exception as e:
+                print(f">>> Failed to open serial port {self.port}: {e}")
+                self.serial_conn = None
+        else:
+            print(">>> No ESP32 device found")
+    
+    def find_esp32_port(self):
+        """Auto-detect ESP32 COM port (Windows/Linux)"""
+        ports = serial.tools.list_ports.comports()
+        
+        # Check for Linux Bluetooth RFCOMM first
+        import platform
+        if platform.system() == 'Linux':
+            # Check for /dev/rfcomm0 (Bluetooth)
+            if os.path.exists('/dev/rfcomm0'):
+                print(f">>> Found Bluetooth RFCOMM at /dev/rfcomm0")
+                return '/dev/rfcomm0'
+        
+        # Check standard serial ports
+        for port in ports:
+            # ESP32 identifiers (USB or Bluetooth)
+            identifiers = ['USB', 'CH340', 'CP210', 'UART', 'Serial', 'Bluetooth']
+            if any(id in port.description for id in identifiers):
+                print(f">>> Found potential ESP32 at {port.device}: {port.description}")
+                return port.device
+        
+        return None
+    
+    def run(self):
+        if not self.serial_conn:
+            print(">>> Serial reader thread: No connection available")
+            return
+            
+        print(">>> Serial reader thread started")
+        while self.running:
+            try:
+                if self.serial_conn and self.serial_conn.in_waiting > 0:
+                    line = self.serial_conn.readline().decode('utf-8').strip()
+                    if line:
+                        # Put message in queue
+                        if not self.message_queue.full():
+                            self.message_queue.put(line)
+                        if line == "disable_image":
+                            print(f">>> Serial received: {line}")
+                time.sleep(0.01)
+            except Exception as e:
+                print(f">>> Serial read error: {e}")
+                time.sleep(0.1)
+    
+    def get_message(self):
+        """Get message from queue (non-blocking)"""
+        try:
+            return self.message_queue.get_nowait()
+        except:
+            return None
+    
+    def stop(self):
+        self.running = False
+        if self.serial_conn:
+            self.serial_conn.close()
+        print(">>> Serial reader thread stopped")
+
+
 class TimeIn(customtkinter.CTk):
 
     def __init__(self):
@@ -738,10 +898,20 @@ class TimeIn(customtkinter.CTk):
 
         # Left side container for timer and design
         self.left_side = customtkinter.CTkFrame(self.content_container)
-        if DISPLAY_HALF:
-            self.left_side.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        
+        # If camera is hidden, center the left_side by using columnspan
+        if HIDE_CAMERA:
+            # Center the design section by spanning both columns
+            if DISPLAY_HALF:
+                self.left_side.grid(row=0, column=0, columnspan=2, sticky="", padx=10, pady=10)
+            else:
+                self.left_side.grid(row=0, column=0, columnspan=2, sticky="", padx=20, pady=20)
         else:
-            self.left_side.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+            # Normal layout with camera on the right
+            if DISPLAY_HALF:
+                self.left_side.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+            else:
+                self.left_side.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
             
         self.left_side.grid_rowconfigure(1, weight=1)
         self.left_side.grid_columnconfigure(1, weight=1)
@@ -767,7 +937,13 @@ class TimeIn(customtkinter.CTk):
 
         # Configure column weights for left_side (block design) and content_container (camera)
         self.left_side.grid_columnconfigure(1, weight=1)  # Block design column
-        self.content_container.grid_columnconfigure(1, weight=3)  # Camera column (3x wider than block design)
+        
+        if not HIDE_CAMERA:
+            self.content_container.grid_columnconfigure(1, weight=3)  # Camera column (3x wider than block design)
+        else:
+            # When camera is hidden, make both columns equal weight for centering
+            self.content_container.grid_columnconfigure(0, weight=1)
+            self.content_container.grid_columnconfigure(1, weight=1)
 
         # Design frames next to the timer
         self.design_frame_0 = TextFrame(self.left_side, "Block Design")
@@ -779,23 +955,30 @@ class TimeIn(customtkinter.CTk):
 
         # --------------------------------------------------- Camera Section
 
-        camera_padx = 10 if DISPLAY_HALF else 20
-        camera_pady = (40, 10) if DISPLAY_HALF else (50, 20)
-        
-        self.video_frame_0 = TextFrame(self.content_container, "Upper Table Camera")
-        self.video_frame_0.grid(row=0, column=1, padx=camera_padx, pady=0, sticky="nsew")
-        
-        self.video_frame_1 = ImageFrame(self.content_container, "")
-        self.video_frame_1.grid(row=0, column=1, padx=camera_padx, pady=camera_pady, sticky="nsew")
-        self.video_frame_1.grid_propagate(False)
+        # Only create camera section if HIDE_CAMERA is False
+        if not HIDE_CAMERA:
+            camera_padx = 10 if DISPLAY_HALF else 20
+            camera_pady = (40, 10) if DISPLAY_HALF else (50, 20)
+            
+            self.video_frame_0 = TextFrame(self.content_container, "Upper Table Camera")
+            self.video_frame_0.grid(row=0, column=1, padx=camera_padx, pady=0, sticky="nsew")
+            
+            self.video_frame_1 = ImageFrame(self.content_container, "")
+            self.video_frame_1.grid(row=0, column=1, padx=camera_padx, pady=camera_pady, sticky="nsew")
+            self.video_frame_1.grid_propagate(False)
+        else:
+            # Camera hidden - set to None
+            self.video_frame_0 = None
+            self.video_frame_1 = None
+            print(">>> HIDE_CAMERA enabled - Camera section hidden")
         
         # Adjust image sizes to fit the frames
         if DISPLAY_HALF:
             self.frame_width = 400
             self.frame_height = 400
         else:
-            self.frame_width = 200
-            self.frame_height = 200
+            self.frame_width = 800
+            self.frame_height = 800
         
         # Load and resize the initial image
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg')
@@ -808,13 +991,17 @@ class TimeIn(customtkinter.CTk):
         self.image_label.pack(expand=True, fill="both")
         self.image_label.configure(image=self.image)
 
-        # Camera label - Configure grid for video_frame_1
-        self.video_frame_1.grid_rowconfigure(0, weight=1)
-        self.video_frame_1.grid_columnconfigure(0, weight=1)
-        
-        # Create camera label with grid
-        self.camera = customtkinter.CTkLabel(self.video_frame_1, text="", anchor="center")
-        self.camera.grid(row=0, column=0, sticky="nsew")
+        # Camera label - Configure grid for video_frame_1 (only if camera not hidden)
+        if not HIDE_CAMERA:
+            self.video_frame_1.grid_rowconfigure(0, weight=1)
+            self.video_frame_1.grid_columnconfigure(0, weight=1)
+            
+            # Create camera label with grid
+            self.camera = customtkinter.CTkLabel(self.video_frame_1, text="", anchor="center")
+            self.camera.grid(row=0, column=0, sticky="nsew")
+        else:
+            # Camera hidden - set to None
+            self.camera = None
 
         # Add the start button
         button_font_size = 30 if DISPLAY_HALF else 36
@@ -882,9 +1069,79 @@ class TimeIn(customtkinter.CTk):
         # Bind Enter key to skip level
         self.bind('<Return>', self.skip_current_level)
         
+        # Initialize YOLO detection thread
+        self.yolo_thread = YOLODetectionThread(model_yolo, USE_BANTAL_MODEL)
+        self.yolo_thread.start()
+        self.latest_detections = []
+        self.frame_count = 0
+        self.yolo_skip_frames = int(os.getenv('YOLO_SKIP_FRAMES', '2'))  # Process every 3rd frame
+        
+        # Initialize MediaPipe Hands once (not every frame)
+        self.mp_hands_detector = mp_hands.Hands(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+            max_num_hands=2
+        )
+        
+        # FPS monitoring
+        self.fps_counter = 0
+        self.fps_start_time = time.time()
+        self.current_fps = 0
+        
+        # Skip MediaPipe on same frames as YOLO for better performance
+        self.mediapipe_skip_frames = int(os.getenv('MEDIAPIPE_SKIP_FRAMES', '2'))
+        
+        # Debug mode
+        self.debug_mode = os.getenv('DEBUG_MODE', 'false').lower() == 'true'
+        
+        # Button mode for image display control
+        self.button_mode = BUTTON_MODE
+        self.image_visible = False
+        self.image_show_time = None
+        self.image_display_duration = 5.0  # 5 seconds
+        
+        # Serial communication thread for button mode
+        self.serial_thread = None
+        if self.button_mode:
+            print(">>> BUTTON_MODE enabled - Image will show for 5 seconds then hide")
+            self.serial_thread = SerialReaderThread()
+            self.serial_thread.start()
+        
+        # Cache for level images
+        self.cached_level_images = {}
+        self.preload_level_images()
+        
         #SpeakTextG("赤と白の 4 つのブロックから表示されたデザインを作成してください。")
         #SpeakTextG("左手または利き手と反対の手で操作してください。")
         #SpeakTextG("準備ができたらスタートボタンを押してください。")
+    
+    def preload_level_images(self):
+        """Preload and cache all level images to avoid I/O lag during gameplay"""
+        print(">>> Preloading level images...")
+        for variant, path in LEVEL_PATHS.items():
+            try:
+                img = Image.open(path)
+                # Cache resized version for display
+                self.cached_level_images[variant] = img.resize(
+                    (self.frame_width, self.frame_height), 
+                    Image.Resampling.LANCZOS
+                )
+            except Exception as e:
+                print(f"Error loading {variant}: {e}")
+        print(f">>> Cached {len(self.cached_level_images)} level images")
+    
+    def get_cached_level_image(self, variant):
+        """Get cached level image or load if not cached"""
+        if variant in self.cached_level_images:
+            return self.cached_level_images[variant]
+        else:
+            # Fallback: load on demand
+            try:
+                img = Image.open(LEVEL_PATHS[variant])
+                return img.resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS)
+            except Exception as e:
+                print(f"Error loading {variant}: {e}")
+                return None
 
     def end_test(self):
         self.current_question = 9
@@ -1039,7 +1296,7 @@ class TimeIn(customtkinter.CTk):
                 conn.close()
 
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg')
-        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(400 , 400))
+        self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(self.frame_width, self.frame_height))
         self.image_label.configure(image=self.image)
         self.show_retry_button()
     
@@ -1283,13 +1540,8 @@ class TimeIn(customtkinter.CTk):
             variant = self.get_random_variant(self.current_question)
             self.current_variant = variant
             
-            # Load and display the next level's image
-            IMAGE_PATH = LEVEL_PATHS[variant]
-            self.image = customtkinter.CTkImage(
-                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                size=(self.frame_width, self.frame_height)
-            )
-            self.image_label.configure(image=self.image)
+            # Load image with button mode support
+            self.load_level_image(variant)
             self.current_level_button.grid_remove()
             self.show_current_level_button(self.current_question)
             # Reset the start time for the next level
@@ -1324,12 +1576,10 @@ class TimeIn(customtkinter.CTk):
         # Load and resize the initial image
         variant = self.get_random_variant(self.current_question)
         self.current_variant = variant
-        IMAGE_PATH = LEVEL_PATHS[variant]
-        self.image = customtkinter.CTkImage(
-            light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-            size=(self.frame_width, self.frame_height)
-        )
-        self.image_label.configure(image=self.image)
+        
+        # Use helper method to load image with button mode support
+        self.load_level_image(variant)
+        
         self.start_task = time.time()
         self.streaming()
 
@@ -1422,7 +1672,7 @@ class TimeIn(customtkinter.CTk):
             seconds = int(elapsed % 60)
             milliseconds = int((elapsed % 1) * 100)
             self.timer_label.configure(text=f"{minutes:02d}:{seconds:02d}.{milliseconds:02d}")
-            self.after(10, self.update_timer)
+            self.after(50, self.update_timer)  # Reduced from 10ms to 50ms
 
     def start_timer(self):
         if not self.timer_running:
@@ -1437,52 +1687,111 @@ class TimeIn(customtkinter.CTk):
         self.timer_label.configure(text="00:00.00")
         self.timer_running = False
 
+    def load_level_image(self, variant):
+        """Load level image with button mode support"""
+        # Load cached image
+        cached_img = self.get_cached_level_image(variant)
+        if cached_img:
+            self.image = customtkinter.CTkImage(
+                light_image=cached_img,
+                size=(self.frame_width, self.frame_height)
+            )
+        
+        # Button mode: Show image for 5 seconds then hide
+        if self.button_mode:
+            self.image_label.configure(image=self.image)
+            self.image_visible = True
+            self.image_show_time = time.time()
+            print(">>> Image displayed (will hide after 5 seconds)")
+        else:
+            # Normal mode: Always show image
+            self.image_label.configure(image=self.image)
+    
+    def handle_button_mode(self):
+        """Handle button mode image visibility logic"""
+        if not self.button_mode:
+            return
+        
+        # Check if image should be hidden after 5 seconds
+        if self.image_visible and self.image_show_time:
+            elapsed = time.time() - self.image_show_time
+            if elapsed >= self.image_display_duration:
+                # Hide image by showing blank
+                blank_image = Image.new('RGB', (self.frame_width, self.frame_height), color='gray')
+                self.image = customtkinter.CTkImage(
+                    light_image=blank_image,
+                    size=(self.frame_width, self.frame_height)
+                )
+                self.image_label.configure(image=self.image)
+                self.image_visible = False
+                self.image_show_time = None
+                print(">>> Image hidden (press button to show again)")
+        
+        # Check for button press from ESP32
+        if self.serial_thread:
+            message = self.serial_thread.get_message()
+            if message == "disable_image" and not self.image_visible:
+                # Show image again for 5 seconds
+                variant = self.current_variant
+                cached_img = self.get_cached_level_image(variant)
+                if cached_img:
+                    self.image = customtkinter.CTkImage(
+                        light_image=cached_img,
+                        size=(self.frame_width, self.frame_height)
+                    )
+                self.image_label.configure(image=self.image)
+                self.image_visible = True
+                self.image_show_time = time.time()
+                print(">>> Button pressed - Image displayed (will hide after 5 seconds)")
+    
     # code for video streaming
     def streaming(self):
 
         self.button_0._state = "disabled"
 
-        frame= cv2.cvtColor(cap.read()[1], cv2.COLOR_BGR2RGB)
-        frame = cv2.resize(frame, (1000, 800))                 #(2000, 1600)   (1000, 800)
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to read frame from camera")
+            self.after(100, self.streaming)
+            return
+            
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Handle button mode image visibility
+        self.handle_button_mode()
+        # Don't resize to 1000x800, use original resolution for better performance
+        # frame = cv2.resize(frame, (1000, 800))
 
         # --------------------------------------------------------------------------- Start Process
 
         # Frame threshold 
         imgBlur = cv2.GaussianBlur(frame, (7,7), 1)
-        imgGray = cv2.cvtColor(imgBlur, cv2.COLOR_BGR2GRAY)
+        imgGray = cv2.cvtColor(imgBlur, cv2.COLOR_RGB2GRAY)
         ret, imgThres = cv2.threshold(imgGray, 175, 255, cv2.THRESH_BINARY) #175   195
         
-        # Make detections 
-        if USE_BANTAL_MODEL:
-            # Untuk model Ultralytics
-            results = model_yolo(frame, verbose=False)
-            
-            # Convert Ultralytics results ke format pandas
-            if len(results) > 0 and hasattr(results[0], 'boxes'):
-                # YOLOv8/Ultralytics format
-                boxes = results[0].boxes
-                detections = []
-                
-                for box in boxes:
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                    conf = box.conf[0].cpu().numpy()
-                    cls = int(box.cls[0].cpu().numpy())
-                    
-                    detections.append([x1, y1, x2, y2, conf, cls, ''])
-                
-                import pandas as pd
-                df_tracked_objects = pd.DataFrame(
-                    detections, 
-                    columns=['xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class', 'name']
-                )
-                list_tracked_objects = df_tracked_objects.values.tolist()
-            else:
-                list_tracked_objects = []
-        else:
-            # Untuk model YOLOv5 biasa
-            results = model_yolo(frame)
-            df_tracked_objects = results.pandas().xyxy[0]
-            list_tracked_objects = df_tracked_objects.values.tolist()
+        # Make detections using background thread (non-blocking)
+        self.frame_count += 1
+        
+        # Only submit frame to YOLO every N frames to reduce load
+        if self.frame_count % (self.yolo_skip_frames + 1) == 0:
+            if self.yolo_thread.frame_queue.empty():  # Only if queue is empty
+                try:
+                    # MUST copy frame to avoid race condition with drawing operations
+                    # Use numpy copy which is faster than frame.copy()
+                    frame_for_yolo = np.array(frame, copy=True)
+                    self.yolo_thread.frame_queue.put_nowait(frame_for_yolo)
+                except:
+                    pass  # Queue full, skip this frame
+        
+        # Get latest detection results if available (non-blocking)
+        if not self.yolo_thread.result_queue.empty():
+            try:
+                self.latest_detections = self.yolo_thread.result_queue.get_nowait()
+            except:
+                pass
+        
+        # Use latest detections (may be from previous frame, but that's OK)
+        list_tracked_objects = self.latest_detections
 
         #if len(list_tracked_objects) == 4: #>0
         
@@ -1520,8 +1829,13 @@ class TimeIn(customtkinter.CTk):
                 pos_x.append( int (center_x) )
                 pos_y.append( int (center_y) )
                 
-                dim = (100, 100)
-                imgBox = cv2.resize(imgThres[y1:y2, x1:x2], dim, interpolation = cv2.INTER_AREA)
+                # Optimize: check bounds before resize to avoid errors
+                if y1 >= 0 and y2 <= imgThres.shape[0] and x1 >= 0 and x2 <= imgThres.shape[1] and (y2-y1) > 0 and (x2-x1) > 0:
+                    dim = (100, 100)
+                    imgBox = cv2.resize(imgThres[y1:y2, x1:x2], dim, interpolation = cv2.INTER_AREA)
+                else:
+                    # Skip invalid box
+                    continue
                 #cv2.imshow("Box_"+str(box_num), imgBox)
                 
                 box_class = [ imgBox[50,25], imgBox[75,50], imgBox[50,75], imgBox[25,50] ]
@@ -1598,12 +1912,17 @@ class TimeIn(customtkinter.CTk):
             box_2 = (pos_x[2], pos_y[2])
             box_3 = (pos_x[3], pos_y[3])
 
-            frame = cv2.line(frame, box_0, box_1, (0, 0, 0), 2)
-            frame = cv2.line(frame, box_0, box_2, (0, 0, 0), 2)
-            frame = cv2.line(frame, box_0, box_3, (0, 0, 0), 2)
-            frame = cv2.line(frame, box_1, box_2, (0, 0, 0), 2)
-            frame = cv2.line(frame, box_1, box_3, (0, 0, 0), 2)
-            frame = cv2.line(frame, box_2, box_3, (0, 0, 0), 2)
+            # Draw lines connecting boxes (optimized with polylines)
+            pts = np.array([
+                [pos_x[0], pos_y[0]],
+                [pos_x[1], pos_y[1]],
+                [pos_x[2], pos_y[2]],
+                [pos_x[3], pos_y[3]]
+            ], np.int32)
+            # Draw all connecting lines at once
+            for i in range(4):
+                for j in range(i+1, 4):
+                    cv2.line(frame, tuple(pts[i]), tuple(pts[j]), (0, 0, 0), 2)
 
             #pos_x_order = [ pos_x[0], pos_x[1], pos_x[2], pos_x[3] ]
             #pos_y_order = [ pos_y[0], pos_y[1], pos_y[2], pos_y[3] ]
@@ -1694,13 +2013,8 @@ class TimeIn(customtkinter.CTk):
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
             
-                            # Load and resize the initial image
-                            IMAGE_PATH = LEVEL_PATHS[variant]
-                            self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                                size=(self.frame_width, self.frame_height)
-                            )
-                            self.image_label.configure(image=self.image)
+                            # Load image with button mode support
+                            self.load_level_image(variant)
                             self.current_level_button.grid_remove()
                             self.show_current_level_button(self.current_question)
                             self.task_flag_01 = False
@@ -1784,13 +2098,8 @@ class TimeIn(customtkinter.CTk):
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
             
-                            # Load and resize the initial image
-                            IMAGE_PATH = LEVEL_PATHS[variant]
-                            self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                                size=(self.frame_width, self.frame_height)
-                            )
-                            self.image_label.configure(image=self.image)
+                            # Load image with button mode support
+                            self.load_level_image(variant)
                             self.current_level_button.grid_remove()
                             self.show_current_level_button(self.current_question)
                             self.task_flag_02 = False
@@ -1874,13 +2183,8 @@ class TimeIn(customtkinter.CTk):
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
             
-                            # Load and resize the initial image
-                            IMAGE_PATH = LEVEL_PATHS[variant]
-                            self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                                size=(self.frame_width, self.frame_height)
-                            )
-                            self.image_label.configure(image=self.image)
+                            # Load image with button mode support
+                            self.load_level_image(variant)
                             self.current_level_button.grid_remove()
                             self.show_current_level_button(self.current_question)
                             self.task_flag_03 = False
@@ -1964,13 +2268,8 @@ class TimeIn(customtkinter.CTk):
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
             
-                            # Load and resize the initial image
-                            IMAGE_PATH = LEVEL_PATHS[variant]
-                            self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                                size=(self.frame_width, self.frame_height)
-                            )
-                            self.image_label.configure(image=self.image)
+                            # Load image with button mode support
+                            self.load_level_image(variant)
                             self.current_level_button.grid_remove()
                             self.show_current_level_button(self.current_question)
                             self.task_flag_04 = False
@@ -2055,13 +2354,8 @@ class TimeIn(customtkinter.CTk):
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
             
-                            # Load and resize the initial image
-                            IMAGE_PATH = LEVEL_PATHS[variant]
-                            self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                                size=(self.frame_width, self.frame_height)
-                            )
-                            self.image_label.configure(image=self.image)
+                            # Load image with button mode support
+                            self.load_level_image(variant)
                             self.current_level_button.grid_remove()
                             self.show_current_level_button(self.current_question)
                             self.task_flag_05 = False
@@ -2146,13 +2440,8 @@ class TimeIn(customtkinter.CTk):
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
             
-                            # Load and resize the initial image
-                            IMAGE_PATH = LEVEL_PATHS[variant]
-                            self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                                size=(self.frame_width, self.frame_height)
-                            )
-                            self.image_label.configure(image=self.image)
+                            # Load image with button mode support
+                            self.load_level_image(variant)
                             self.current_level_button.grid_remove()
                             self.show_current_level_button(self.current_question)
                             self.task_flag_06 = False
@@ -2236,13 +2525,8 @@ class TimeIn(customtkinter.CTk):
                             self.current_variant = variant
                             current_answer = LEVEL_ANSWERS.get(self.current_variant, [])
             
-                            # Load and resize the initial image
-                            IMAGE_PATH = LEVEL_PATHS[variant]
-                            self.image = customtkinter.CTkImage(
-                                light_image=Image.open(IMAGE_PATH).resize((self.frame_width, self.frame_height), Image.Resampling.LANCZOS),
-                                size=(self.frame_width, self.frame_height)
-                            )
-                            self.image_label.configure(image=self.image)
+                            # Load image with button mode support
+                            self.load_level_image(variant)
                             self.current_level_button.grid_remove()
                             self.show_current_level_button(self.current_question)
                             self.task_flag_07 = False
@@ -2327,41 +2611,78 @@ class TimeIn(customtkinter.CTk):
 
         # --------------------------------------------------------------------------- End Process
 
-        with mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence = 0.5 ) as hands:
-
-            #frame = cv2.flip(frame, 1)
-            frame_rgb = cv2.cvtColor(frame, 1)      
-            hand_result = hands.process(frame_rgb)
+        # Use persistent MediaPipe Hands instance (not recreated every frame)
+        # Skip MediaPipe on same frames as YOLO to reduce load
+        if self.frame_count % (self.mediapipe_skip_frames + 1) == 0:
+            # frame_rgb already in RGB format, no need to convert
+            hand_result = self.mp_hands_detector.process(frame)
 
             if hand_result.multi_hand_landmarks:
                 for hand_landmarks in hand_result.multi_hand_landmarks:
                     mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_style, connection_style)
 
-        # Convert frame to ImageTk format
-        # img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        img = Image.fromarray(frame)
+        # Update camera display only if camera is not hidden
+        if not HIDE_CAMERA and self.camera is not None:
+            # Convert frame to ImageTk format
+            # img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            img = Image.fromarray(frame)
+            
+            # Calculate aspect ratio
+            frame_height, frame_width = frame.shape[:2]
+            container_width = self.video_frame_1.winfo_width()
+            container_height = self.video_frame_1.winfo_height()
+            
+            # Calculate scaling factor while maintaining aspect ratio
+            width_ratio = container_width / frame_width
+            height_ratio = container_height / frame_height
+            scale = min(width_ratio, height_ratio)
+            
+            # Resize image if needed
+            if scale < 1:
+                new_width = int(frame_width * scale)
+                new_height = int(frame_height * scale)
+                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            ImgTks = ImageTk.PhotoImage(image=img)
+            self.camera.imgtk = ImgTks
+            self.camera.configure(image=ImgTks)
         
-        # Calculate aspect ratio
-        frame_height, frame_width = frame.shape[:2]
-        container_width = self.video_frame_1.winfo_width()
-        container_height = self.video_frame_1.winfo_height()
-        
-        # Calculate scaling factor while maintaining aspect ratio
-        width_ratio = container_width / frame_width
-        height_ratio = container_height / frame_height
-        scale = min(width_ratio, height_ratio)
-        
-        # Resize image if needed
-        if scale < 1:
-            new_width = int(frame_width * scale)
-            new_height = int(frame_height * scale)
-            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        
-        ImgTks = ImageTk.PhotoImage(image=img)
-        self.camera.imgtk = ImgTks
-        self.camera.configure(image=ImgTks)
+        # FPS monitoring
+        self.fps_counter += 1
+        if time.time() - self.fps_start_time >= 1.0:
+            self.current_fps = self.fps_counter
+            
+            # Enhanced FPS output with debug info
+            if self.debug_mode:
+                queue_size = self.yolo_thread.frame_queue.qsize()
+                result_size = self.yolo_thread.result_queue.qsize()
+                last_inference = self.yolo_thread.last_inference_time
+                print(f"FPS: {self.current_fps} | YOLO: {last_inference:.1f}ms | Queue: {queue_size}/{result_size}")
+            else:
+                print(f"FPS: {self.current_fps}")
+            
+            self.fps_counter = 0
+            self.fps_start_time = time.time()
 
-        self.after(20, self.streaming)
+        # Reduce delay for better responsiveness
+        self.after(10, self.streaming)
+    
+    def cleanup(self):
+        """Cleanup resources before closing"""
+        print(">>> Cleaning up resources...")
+        if hasattr(self, 'yolo_thread'):
+            self.yolo_thread.stop()
+        if hasattr(self, 'serial_thread') and self.serial_thread:
+            self.serial_thread.stop()
+        if hasattr(self, 'mp_hands_detector'):
+            self.mp_hands_detector.close()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    
+    def destroy(self):
+        """Override destroy to cleanup resources"""
+        self.cleanup()
+        super().destroy()
 
 
 
