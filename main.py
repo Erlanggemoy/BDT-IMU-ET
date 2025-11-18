@@ -333,6 +333,40 @@ def get_db_connection():
 #     conn.close()
 
 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> SQL File Executor Background Thread
+
+# Background thread untuk auto-execute SQL files yang di-generate oleh aplikasi
+def sql_executor_worker():
+    """Background worker yang berjalan setiap 5 detik untuk execute SQL files"""
+    try:
+        # Import SQL executor module
+        import sys
+        sys.path.insert(0, os.path.join(BASE_DIR, 'cron'))
+        from execute_sql import process_sql_files
+        
+        while True:
+            try:
+                # Process SQL files dengan silent mode (no log jika tidak ada file)
+                sql_dir = Path(BASE_DIR) / 'cron' / 'sql'
+                if sql_dir.exists() and list(sql_dir.glob('*.sql')):
+                    # Ada file SQL, process
+                    process_sql_files(get_db_connection_func=get_db_connection, sql_dir=sql_dir)
+                # Sleep 5 detik sebelum check lagi
+                time.sleep(5)
+            except Exception as e:
+                print(f">>> SQL Executor error: {e}")
+                time.sleep(5)  # Tetap sleep meskipun error
+    except Exception as e:
+        print(f">>> SQL Executor thread failed to start: {e}")
+        import traceback
+        traceback.print_exc()
+
+# Start SQL executor thread saat aplikasi dimulai
+sql_executor_thread = threading.Thread(target=sql_executor_worker, daemon=True, name="SQLExecutor")
+sql_executor_thread.start()
+print(">>> SQL Executor background thread started (checking every 5 seconds)")
+
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Global Parameter
 
 n_frame = 0    
@@ -1169,130 +1203,127 @@ class TimeIn(customtkinter.CTk):
         play_audio("AUDIO/selesai.wav")
         time.sleep(3)
 
-        # Save results to PostgreSQL database
+        # Generate SQL file for cronjob to execute
         try:
-            conn = get_db_connection()
-            if conn:
-                with conn.cursor() as cursor:
-                    # First, check if participant exists (case-insensitive name match)
-                    check_query = """
-                    SELECT id FROM bdt.participant_data 
-                    WHERE LOWER(name) = LOWER(%s) 
-                    AND real_age = %s 
-                    AND gender = %s
-                    LIMIT 1
-                    """
-                    cursor.execute(check_query, (
-                            self.nick_name,
-                            int(self.age_range_code),
-                            self.gender_code
-                        ))
-                    participant = cursor.fetchone()
+            import datetime
+            
+            # Create SQL directory if it doesn't exist
+            sql_dir = Path('./cron/sql')
+            sql_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate unique filename with timestamp
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+            sql_filename = sql_dir / f'participant_{timestamp}.sql'
+            
+            # Prepare values
+            name = self.nick_name.replace("'", "''")  # Escape single quotes
+            real_age = int(self.age_range_code)
+            gender = self.gender_code
+            estimated_age = int(age_cog)
+            cognitive_fitness = f"{visuo_spatial}%"
+            avg_time_all = float(self.timer_task_avg)
+            avg_time_1 = float(self.timer_task_all[0]) if len(self.timer_task_all) > 0 else 'NULL'
+            avg_time_2 = float(self.timer_task_all[1]) if len(self.timer_task_all) > 1 else 'NULL'
+            avg_time_3 = float(self.timer_task_all[2]) if len(self.timer_task_all) > 2 else 'NULL'
+            avg_time_4 = float(self.timer_task_all[3]) if len(self.timer_task_all) > 3 else 'NULL'
+            avg_time_5 = float(self.timer_task_all[4]) if len(self.timer_task_all) > 4 else 'NULL'
+            avg_time_6 = float(self.timer_task_all[5]) if len(self.timer_task_all) > 5 else 'NULL'
+            avg_time_7 = float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else 'NULL'
+            avg_time_8 = float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else 'NULL'
+            
+            # Build SQL content
+            sql_content = f"""-- Auto-generated SQL for participant data
+-- Generated at: {datetime.datetime.now().isoformat()}
 
-                    # Prepare the values tuple
-                    values = (
-                        self.nick_name,                      # name
-                        int(self.age_range_code),           # real_age
-                        self.gender_code,                   # gender
-                        int(age_cog),                       # estimated_cognitive_age
-                        f"{visuo_spatial}%",                # cognitive_fitness
-                        float(self.timer_task_avg),         # avg_time_all
-                        float(self.timer_task_all[0]) if len(self.timer_task_all) > 0 else None,  # avg_time_1
-                        float(self.timer_task_all[1]) if len(self.timer_task_all) > 1 else None,  # avg_time_2
-                        float(self.timer_task_all[2]) if len(self.timer_task_all) > 2 else None,  # avg_time_3
-                        float(self.timer_task_all[3]) if len(self.timer_task_all) > 3 else None,  # avg_time_4
-                        float(self.timer_task_all[4]) if len(self.timer_task_all) > 4 else None,  # avg_time_5
-                        float(self.timer_task_all[5]) if len(self.timer_task_all) > 5 else None,  # avg_time_6
-                        float(self.timer_task_all[6]) if len(self.timer_task_all) > 6 else None,  # avg_time_7
-                        float(self.timer_task_all[7]) if len(self.timer_task_all) > 7 else None   # avg_time_8
-                    )
+DO $$
+DECLARE
+    v_participant_id INTEGER;
+    v_timestamp TIMESTAMP;
+BEGIN
+    -- Check if participant exists
+    SELECT id INTO v_participant_id
+    FROM bdt.participant_data
+    WHERE LOWER(name) = LOWER('{name}')
+    AND real_age = {real_age}
+    AND gender = '{gender}'
+    LIMIT 1;
 
-                    if participant:
-                        # Update existing record in participant_data
-                        update_query = """
-                        UPDATE bdt.participant_data 
-                        SET 
-                            estimated_cognitive_age = %s,
-                            cognitive_fitness = %s,
-                            avg_time_all = %s,
-                            avg_time_1 = %s,
-                            avg_time_2 = %s,
-                            avg_time_3 = %s,
-                            avg_time_4 = %s,
-                            avg_time_5 = %s,
-                            avg_time_6 = %s,
-                            avg_time_7 = %s,
-                            avg_time_8 = %s,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE id = %s
-                        RETURNING id, updated_at
-                        """
-                        # Reorder values for update (exclude name, age, gender and add id at the end)
-                        update_values = values[3:] + (participant[0],)
-                        cursor.execute(update_query, update_values)
-                        updated_participant = cursor.fetchone()
-                        print(">>> Successfully updated existing participant data in database")
+    IF v_participant_id IS NOT NULL THEN
+        -- Update existing participant
+        UPDATE bdt.participant_data
+        SET 
+            estimated_cognitive_age = {estimated_age},
+            cognitive_fitness = '{cognitive_fitness}',
+            avg_time_all = {avg_time_all},
+            avg_time_1 = {avg_time_1},
+            avg_time_2 = {avg_time_2},
+            avg_time_3 = {avg_time_3},
+            avg_time_4 = {avg_time_4},
+            avg_time_5 = {avg_time_5},
+            avg_time_6 = {avg_time_6},
+            avg_time_7 = {avg_time_7},
+            avg_time_8 = {avg_time_8},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = v_participant_id
+        RETURNING updated_at INTO v_timestamp;
 
-                        # Insert history record with the original created_at
-                        history_query = """
-                        INSERT INTO bdt.participant_data_history (
-                            name, real_age, gender, estimated_cognitive_age, 
-                            cognitive_fitness, avg_time_all, avg_time_1, 
-                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                            avg_time_6, avg_time_7, avg_time_8, created_at
-                        ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                        )
-                        """
-                        history_values = values + (updated_participant[1],) # Use the same updated_at
-                        cursor.execute(history_query, history_values)
-                        print(">>> Added history record for updated participant")
+        -- Insert history record
+        INSERT INTO bdt.participant_data_history (
+            name, real_age, gender, estimated_cognitive_age,
+            cognitive_fitness, avg_time_all, avg_time_1,
+            avg_time_2, avg_time_3, avg_time_4, avg_time_5,
+            avg_time_6, avg_time_7, avg_time_8, created_at
+        ) VALUES (
+            '{name}', {real_age}, '{gender}', {estimated_age},
+            '{cognitive_fitness}', {avg_time_all}, {avg_time_1},
+            {avg_time_2}, {avg_time_3}, {avg_time_4}, {avg_time_5},
+            {avg_time_6}, {avg_time_7}, {avg_time_8}, v_timestamp
+        );
 
-                    else:
-                        # Insert new record into participant_data
-                        insert_query = """
-                        INSERT INTO bdt.participant_data (
-                            name, real_age, gender, estimated_cognitive_age, 
-                            cognitive_fitness, avg_time_all, avg_time_1, 
-                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                            avg_time_6, avg_time_7, avg_time_8, created_at
-                        ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
-                        )
-                        RETURNING id, created_at
-                        """
-                        cursor.execute(insert_query, values)
-                        new_participant = cursor.fetchone()
-                        print(">>> Successfully saved new participant data to database")
+        RAISE NOTICE 'Updated existing participant: %', '{name}';
+    ELSE
+        -- Insert new participant
+        INSERT INTO bdt.participant_data (
+            name, real_age, gender, estimated_cognitive_age,
+            cognitive_fitness, avg_time_all, avg_time_1,
+            avg_time_2, avg_time_3, avg_time_4, avg_time_5,
+            avg_time_6, avg_time_7, avg_time_8, created_at
+        ) VALUES (
+            '{name}', {real_age}, '{gender}', {estimated_age},
+            '{cognitive_fitness}', {avg_time_all}, {avg_time_1},
+            {avg_time_2}, {avg_time_3}, {avg_time_4}, {avg_time_5},
+            {avg_time_6}, {avg_time_7}, {avg_time_8}, CURRENT_TIMESTAMP
+        )
+        RETURNING created_at INTO v_timestamp;
 
-                        # Insert the same record into history
-                        history_query = """
-                        INSERT INTO bdt.participant_data_history (
-                            name, real_age, gender, estimated_cognitive_age, 
-                            cognitive_fitness, avg_time_all, avg_time_1, 
-                            avg_time_2, avg_time_3, avg_time_4, avg_time_5, 
-                            avg_time_6, avg_time_7, avg_time_8, created_at
-                        ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                        )
-                        """
-                        history_values = values + (new_participant[1],)  # Use the same created_at
-                        cursor.execute(history_query, history_values)
-                        print(">>> Added initial history record for new participant")
-                                    
-                    conn.commit()
-                                
-                # Close the connection
-                conn.close()
+        -- Insert initial history record
+        INSERT INTO bdt.participant_data_history (
+            name, real_age, gender, estimated_cognitive_age,
+            cognitive_fitness, avg_time_all, avg_time_1,
+            avg_time_2, avg_time_3, avg_time_4, avg_time_5,
+            avg_time_6, avg_time_7, avg_time_8, created_at
+        ) VALUES (
+            '{name}', {real_age}, '{gender}', {estimated_age},
+            '{cognitive_fitness}', {avg_time_all}, {avg_time_1},
+            {avg_time_2}, {avg_time_3}, {avg_time_4}, {avg_time_5},
+            {avg_time_6}, {avg_time_7}, {avg_time_8}, v_timestamp
+        );
 
+        RAISE NOTICE 'Inserted new participant: %', '{name}';
+    END IF;
+END $$;
+"""
+            
+            # Write SQL file
+            with open(sql_filename, 'w', encoding='utf-8') as f:
+                f.write(sql_content)
+            
+            print(f">>> SQL file generated: {sql_filename}")
+            print(">>> Cronjob will execute this file automatically")
+            
         except Exception as e:
-            print(">>> Error saving to database:")
+            print(">>> Error generating SQL file:")
             print(f"Error: {e}")
-            if 'conn' in locals():
-                conn.rollback()
-        finally:
-            if 'conn' in locals() and conn is not None:
-                conn.close()
 
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg')
         self.image = customtkinter.CTkImage(light_image=Image.open(IMAGE_PATH), size=(self.frame_width, self.frame_height))
