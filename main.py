@@ -8,7 +8,6 @@ import time
 import socket
 import threading
 from queue import Queue
-from text_utils import number_to_words_id
 from dotenv import load_dotenv
 from pathlib import Path
 import serial
