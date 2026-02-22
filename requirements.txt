@@ -18,6 +18,6 @@ AppOpener
 scikit-learn
 psycopg2-binary
 python-dotenv
-mediapipe
+mediapipe==0.10.14
 ultralytics
 pyserial

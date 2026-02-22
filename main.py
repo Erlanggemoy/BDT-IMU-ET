@@ -6,16 +6,60 @@ import os
 import math
 import time
 import socket
+import sys
 import threading
+import traceback
 from queue import Queue
 from dotenv import load_dotenv
 from pathlib import Path
 import serial
 import serial.tools.list_ports
+from datetime import datetime
 
  # Load environment variables from .env file
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
+
+ERROR_LOG_PATH = Path(__file__).resolve().parent / "runtime_errors.log"
+
+def log_exception(context, exc_type, exc_value, exc_tb):
+    """Log exceptions safely to console and file, bypassing fragile sys.excepthook output."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    header = f"[{timestamp}] {context}\n"
+    trace = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    payload = f"{header}{trace}\n"
+
+    try:
+        with ERROR_LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(payload)
+    except Exception:
+        pass
+
+    try:
+        sys.__stderr__.write(payload)
+        sys.__stderr__.flush()
+    except Exception:
+        try:
+            sys.__stderr__.buffer.write(payload.encode("utf-8", "backslashreplace"))
+            sys.__stderr__.buffer.flush()
+        except Exception:
+            pass
+
+def _global_excepthook(exc_type, exc_value, exc_tb):
+    log_exception("Unhandled exception (main thread)", exc_type, exc_value, exc_tb)
+
+def _thread_excepthook(args):
+    thread_name = args.thread.name if args.thread else "unknown"
+    log_exception(
+        f"Unhandled exception (thread: {thread_name})",
+        args.exc_type,
+        args.exc_value,
+        args.exc_traceback,
+    )
+
+sys.excepthook = _global_excepthook
+if hasattr(threading, "excepthook"):
+    threading.excepthook = _thread_excepthook
         
 # Get display mode from environment variable (default to True if not set or invalid)
 DISPLAY_HALF = os.getenv('DISPLAY_HALF', 'true').lower() == 'true'
@@ -195,8 +239,17 @@ def parse_custom_levels(custom_level_str):
         print(f"Error parsing CUSTOM_LEVEL: {e}")
         return {}
 
+def sanitize_env_value(raw_value):
+    """Trim env values and remove inline comments (e.g., '1a,2b # notes')."""
+    if raw_value is None:
+        return ''
+    value = str(raw_value).strip()
+    if '#' in value:
+        value = value.split('#', 1)[0].strip()
+    return value
+
 # Parse and validate custom levels
-CUSTOM_LEVEL_STR = os.getenv('CUSTOM_LEVEL', '').strip()
+CUSTOM_LEVEL_STR = sanitize_env_value(os.getenv('CUSTOM_LEVEL', ''))
 CUSTOM_LEVELS = parse_custom_levels(CUSTOM_LEVEL_STR)
 
 # If we have valid custom levels, print them
@@ -526,13 +579,28 @@ def play_audio(wav):
 #     sd.play(wav, samplerate=sr)
 #     sd.wait()
 
-import mediapipe as mp
+try:
+    import mediapipe as mp
+except Exception as e:
+    mp = None
+    print(f">>> MediaPipe import failed: {e}. Hand landmark detection disabled.")
 
-mp_drawing = mp.solutions.drawing_utils
-mp_hands = mp.solutions.hands
+mp_drawing = None
+mp_hands = None
+landmark_style = None
+connection_style = None
 
-landmark_style = mp_drawing.DrawingSpec(color=(0,0,255), thickness=3, circle_radius=3)
-connection_style = mp_drawing.DrawingSpec(color=(0,0,255), thickness=4)
+if mp is not None:
+    try:
+        mp_solutions = getattr(mp, "solutions", None)
+        if mp_solutions is None:
+            from mediapipe.python import solutions as mp_solutions
+        mp_drawing = mp_solutions.drawing_utils
+        mp_hands = mp_solutions.hands
+        landmark_style = mp_drawing.DrawingSpec(color=(0,0,255), thickness=3, circle_radius=3)
+        connection_style = mp_drawing.DrawingSpec(color=(0,0,255), thickness=4)
+    except Exception as e:
+        print(f">>> MediaPipe 'solutions' API unavailable: {e}. Hand landmark detection disabled.")
 
 
 
@@ -628,7 +696,12 @@ class App_Input(customtkinter.CTk): #CTkToplevel
         #SpeakTextG("... ")
 
 
+    def report_callback_exception(self, exc, val, tb):
+        """Capture tkinter callback exceptions with full traceback."""
+        log_exception("Tk callback exception (App_Input)", exc, val, tb)
+
     def button_callback(self):
+        import tkinter.messagebox as messagebox
         try:
             # Get values from UI
             name = self.textbox_frame_0.get().strip()
@@ -662,15 +735,19 @@ class App_Input(customtkinter.CTk): #CTkToplevel
 
         except ValueError as e:
             # Show error message to user
-            import tkinter.messagebox as messagebox
             messagebox.showerror("Input Error", str(e))
         except Exception as e:
             print(f"Unexpected error: {e}")
             messagebox.showerror("Error", "Terjadi kesalahan saat memproses input")
         
 
-app_input = App_Input()
-app_input.mainloop()
+try:
+    app_input = App_Input()
+    app_input.mainloop()
+except Exception:
+    print(">>> Failed while running input window. Full traceback:")
+    traceback.print_exc()
+    raise SystemExit(1)
 
 
 
@@ -874,6 +951,10 @@ class SerialReaderThread(threading.Thread):
 
 class TimeIn(customtkinter.CTk):
 
+    def report_callback_exception(self, exc, val, tb):
+        """Capture tkinter callback exceptions with full traceback."""
+        log_exception("Tk callback exception (TimeIn)", exc, val, tb)
+
     def __init__(self):
 
         super().__init__()
@@ -1010,8 +1091,8 @@ class TimeIn(customtkinter.CTk):
             self.frame_width = 400
             self.frame_height = 400
         else:
-            self.frame_width = 800
-            self.frame_height = 800
+            self.frame_width = 600
+            self.frame_height = 600
         
         # Load and resize the initial image
         IMAGE_PATH = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg')
@@ -1110,11 +1191,16 @@ class TimeIn(customtkinter.CTk):
         self.yolo_skip_frames = int(os.getenv('YOLO_SKIP_FRAMES', '2'))  # Process every 3rd frame
         
         # Initialize MediaPipe Hands once (not every frame)
-        self.mp_hands_detector = mp_hands.Hands(
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-            max_num_hands=2
-        )
+        self.mp_hands_detector = None
+        if mp_hands is not None:
+            try:
+                self.mp_hands_detector = mp_hands.Hands(
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5,
+                    max_num_hands=2
+                )
+            except Exception as e:
+                print(f">>> Failed to initialize MediaPipe Hands: {e}. Hand landmark detection disabled.")
         
         # FPS monitoring
         self.fps_counter = 0
@@ -2643,11 +2729,11 @@ END $$;
 
         # Use persistent MediaPipe Hands instance (not recreated every frame)
         # Skip MediaPipe on same frames as YOLO to reduce load
-        if self.frame_count % (self.mediapipe_skip_frames + 1) == 0:
+        if self.mp_hands_detector is not None and self.frame_count % (self.mediapipe_skip_frames + 1) == 0:
             # frame_rgb already in RGB format, no need to convert
             hand_result = self.mp_hands_detector.process(frame)
 
-            if hand_result.multi_hand_landmarks:
+            if hand_result and hand_result.multi_hand_landmarks:
                 for hand_landmarks in hand_result.multi_hand_landmarks:
                     mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_style, connection_style)
 
@@ -2704,7 +2790,7 @@ END $$;
             self.yolo_thread.stop()
         if hasattr(self, 'serial_thread') and self.serial_thread:
             self.serial_thread.stop()
-        if hasattr(self, 'mp_hands_detector'):
+        if hasattr(self, 'mp_hands_detector') and self.mp_hands_detector is not None:
             self.mp_hands_detector.close()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -2717,7 +2803,12 @@ END $$;
 
 
 if __name__ == "__main__":
-    app = TimeIn()
-    #app.streaming()
-    app.after(0, lambda:app.state('zoomed'))
-    app.mainloop()
+    try:
+        app = TimeIn()
+        #app.streaming()
+        app.after(0, lambda:app.state('zoomed'))
+        app.mainloop()
+    except Exception:
+        print(">>> Application crashed. Full traceback:")
+        traceback.print_exc()
+        raise SystemExit(1)
