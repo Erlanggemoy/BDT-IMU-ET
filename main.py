@@ -1228,7 +1228,9 @@ class TimeIn(customtkinter.CTk):
         
         # Cache for level images
         self.cached_level_images = {}
+        self.game_started = False
         self.preload_level_images()
+        self.after(200, self.streaming)
         
         #SpeakTextG("赤と白の 4 つのブロックから表示されたデザインを作成してください。")
         #SpeakTextG("左手または利き手と反対の手で操作してください。")
@@ -1678,7 +1680,7 @@ END $$;
         return f"{level}{random.choice(variants)}"
 
     def button_0_callback(self):
-
+        self.game_started = True
         # Hide the start button
         self.button_0.grid_remove()
         # Show the current level button in the same position
@@ -1697,7 +1699,6 @@ END $$;
         self.load_level_image(variant)
         
         self.start_task = time.time()
-        self.streaming()
 
         # Reset and start the timer
         self.reset_timer()
@@ -1738,9 +1739,12 @@ END $$;
 
         #print(cognitive_age)
 
-        if (cognitive_age < 20):
+        cognitive_age = model_time.predict(new_x_time_poly)
+        cognitive_age = float(np.asarray(cognitive_age).item())   # ambil scalar sekali di sini
+
+        if cognitive_age < 20:
             cognitive_age = 20
-        elif (cognitive_age > 85):
+        elif cognitive_age > 85:
             cognitive_age = 90
         
         cognitive_age = int(cognitive_age)
@@ -1863,7 +1867,9 @@ END $$;
     # code for video streaming
     def streaming(self):
 
-        self.button_0._state = "disabled"
+        if self.game_started:
+            self.button_0._state = "disabled"
+        # self.button_0._state = "disabled"
 
         ret, frame = cap.read()
         if not ret:
@@ -2079,8 +2085,8 @@ END $$;
                 # 5. Urutkan box_design berdasarkan index yang sudah diurutkan
                 box_design_sort = [box_design[i] for i in sort_index]
 
-                current_answer = LEVEL_ANSWERS.get(self.current_variant, [])    
-                if self.current_question == 1 and box_design_sort == current_answer:
+                current_answer = LEVEL_ANSWERS.get(self.current_variant, []) if self.game_started else []
+                if self.game_started and self.current_question == 1 and box_design_sort == current_answer:
                     test_label = frame[20:120, 20:120]
                     test_label [np.where(mask_img_01)] = 0
                     test_label += img_01
@@ -2747,6 +2753,13 @@ END $$;
             frame_height, frame_width = frame.shape[:2]
             container_width = self.video_frame_1.winfo_width()
             container_height = self.video_frame_1.winfo_height()
+            # Guard: jika widget belum siap (ukuran masih 1 atau 0), skip resize kali ini
+            if container_width <= 1 or container_height <= 1:
+                ImgTks = ImageTk.PhotoImage(image=img)
+                self.camera.imgtk = ImgTks
+                self.camera.configure(image=ImgTks)
+                self.after(10, self.streaming)
+                return
             
             # Calculate scaling factor while maintaining aspect ratio
             width_ratio = container_width / frame_width

@@ -6,3 +6,6 @@ testing_tts.py
 TTS_TEST/
 agents.md
 *.log
+venv310/
+camera_settings.json
+runtime_errors.log

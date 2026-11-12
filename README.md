@@ -13,10 +13,14 @@ python -m venv venv
 python -m venv venv
 source venv/bin/activate
 ```
+# Untuk Python versi 3.10
+py -3.10 -m venv venv310
+source venv310/Scripts/activate
 
 ### 2. Instal Dependensi
 
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
@@ -47,3 +51,4 @@ Untuk pengguna Windows dengan processor Intel:
 ```bash
 python main.py
 ```
+###
