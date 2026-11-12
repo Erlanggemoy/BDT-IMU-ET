@@ -5,7 +5,6 @@ import cv2
 import os
 import math
 import time
-import socket
 import sys
 import threading
 import traceback
@@ -161,23 +160,6 @@ if not USE_BANTAL_MODEL:
     )
     model_yolo.to(device)
 
-
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Read Files
-
-task_00 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '00.jpg'))
-task_0A = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0A.jpg'))
-task_0B = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '0Bx.jpg'))
-# Static Level
-# task_01 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '01.jpg')
-# task_02 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '02.jpg')
-# task_03 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '03.jpg')
-# task_04 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '04.jpg')
-# task_05 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '05.jpg')
-# task_06 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '06.jpg')
-# task_07 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '07.jpg')
-# task_08 = os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '08.jpg')
-task_09 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'TEST_1000x1000', '09.jpg'))
-
 # Random Level
 import random
 LEVEL_VARIANTS = {
@@ -331,7 +313,6 @@ ret_img_09, mask_img_09 = cv2.threshold(gray_img_09, 1, 255, cv2.THRESH_BINARY)
   
 # PostgreSQL Setup
 import psycopg2
-from psycopg2 import sql
 
 def get_db_connection():
     """Create and return a PostgreSQL database connection using environment variables."""
@@ -428,12 +409,6 @@ else:
         '7a': [3,4,6,5], '7b': [5,6,4,3], '7c': [3,6,4,5], '7d': [5,4,6,3],
         '8a': [5,4,4,5], '8b': [3,6,6,3], '8c': [4,5,3,6], '8d': [6,3,5,4],
     } 
-
-nick_name = ""
-gender_code = ""
-age_range_code = 0
-
-
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Text to  
 
@@ -589,11 +564,6 @@ class App_Input(customtkinter.CTk): #CTkToplevel
 
         self.button = customtkinter.CTkButton(self, text="SUBMIT", command=self.button_callback, font=("Helvetica",30))
         self.button.grid(row=2, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
-
-        #play_audio("AUDIO/selamat_datang.wav")
-        # tts_indo("Selamat datang di permainan Blok Desain Tes.") #名前、年齢、性別を入力してください。
-        #SpeakTextG("... ")
-
 
     def report_callback_exception(self, exc, val, tb):
         """Capture tkinter callback exceptions with full traceback."""
@@ -1689,7 +1659,6 @@ class TimeIn(customtkinter.CTk):
             self.bottom_container.grid(row=1, column=0, columnspan=2, sticky="nsew")
 
         #self.start_zero = time.time()
-        #self.start_thumb = time.time()
 
         self.timer_task_all = []
 
@@ -1699,10 +1668,6 @@ class TimeIn(customtkinter.CTk):
         self.current_question = 1
 
         self.cognitive_age_list = []
-
-        global nick_name
-        global gender_code
-        global age_range_code
 
         self.nick_name = nick_name
         self.gender_code = gender_code
@@ -2128,7 +2093,6 @@ END $$;
         self.start_timer()
 
     def _on_level_solved(self, level):
-
         if not self.task_flag[level]:
             return
         seconds = round(time.time() - self.start_task, 2)   # timer_return selalu 0
@@ -2613,12 +2577,10 @@ END $$;
         
         box_num = 0
         box_face = 0
-        box_list = []
         box_design = []
         box_distance = []
         box_design_sort = []
 
-        box_near_hand = []
         track_input = []   # (cx, cy, face_state, x1, y1, x2, y2, conf) untuk rotation tracker
         #avg_confidence = []
 
@@ -2744,11 +2706,6 @@ END $$;
         # >>>>>>>>>>>>
 
         if len(box_design) == 4 and len(box_distance) == 4:
-
-            box_0 = (pos_x[0], pos_y[0])
-            box_1 = (pos_x[1], pos_y[1])
-            box_2 = (pos_x[2], pos_y[2])
-            box_3 = (pos_x[3], pos_y[3])
 
             # Draw lines connecting boxes (optimized with polylines)
             pts = np.array([
