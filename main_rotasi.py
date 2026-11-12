@@ -79,14 +79,6 @@ except (ValueError, TypeError):
     print(f"Warning: Invalid MAX_LEVEL in .env file. Using default value: {MAX_LEVEL}")
 
 LEVEL_COUNT = 8
-                                                        
-#
-# \import pyautogui
-#screen_width, screen_height = pyautogui.size()
-#pyautogui.moveTo(screen_width, screen_height)
-# Press the Windows key and the D key simultaneously to minimize all windows
-#pyautogui.hotkey('win', 'd')
-
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Learning
 
@@ -425,50 +417,8 @@ print(">>> SQL Executor background thread started (checking every 5 seconds)")
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Global Parameter
 
-n_frame = 0    
 n_capture = 3            # Detail 1 Normal 3  # Realtime 7
 #n_contour = 0
-n_test = 0
-
-timer_return = 0
-
-t_thumb_all = []
-
-t_thumb_01 = 0
-t_thumb_02 = 0
-t_thumb_03 = 0
-t_thumb_03 = 0
-t_thumb_04 = 0
-t_thumb_05 = 0
-t_thumb_06 = 0
-t_thumb_07 = 0
-t_thumb_08 = 0
-
-thumb_flag_01 = True
-thumb_flag_02 = True
-thumb_flag_03 = True
-thumb_flag_04 = True
-thumb_flag_05 = True
-thumb_flag_06 = True
-thumb_flag_07 = True
-thumb_flag_08 = True
-
-# Answers for static question
-# ans_01  = [2,1,1,2]
-# ans_02  = [1,3,1,1]
-# ans_02x = [1,1,3,1]
-# ans_03  = [2,2,3,4]
-# ans_03x = [2,3,2,4]
-# ans_04  = [5,1,4,1]
-# ans_04x = [5,4,1,1]
-# ans_05  = [4,3,5,6]
-# ans_05x = [4,5,3,6]
-# ans_06  = [1,4,6,1]
-# ans_06x = [1,6,4,1]
-# ans_07  = [5,6,4,3]
-# ans_07x = [5,4,6,3]
-# ans_08  = [5,3,4,5]
-# ans_08x = [5,4,3,5]
 
 # Answers for random question
 if NORMAL_PATTERN:
@@ -493,17 +443,6 @@ else:
         '7a': [3,4,6,5], '7b': [5,6,4,3], '7c': [3,6,4,5], '7d': [5,4,6,3],
         '8a': [5,4,4,5], '8b': [3,6,6,3], '8c': [4,5,3,6], '8d': [6,3,5,4],
     } 
-
-grasp_pose = [0,0,0,0,0,0,0]
-
-speed_eye = 0
-speed_hand = 0
-
-scale_percent = 130 # percent of original size
-task_width = int(task_0A.shape[1] * scale_percent / 100)
-task_height = int(task_0A.shape[0] * scale_percent / 100)
-task_dim = (task_width, task_height)
-task_resized = cv2.resize(task_0A, task_dim, interpolation = cv2.INTER_AREA)
 
 nick_name = ""
 gender_code = ""
@@ -1809,24 +1748,6 @@ class TimeIn(customtkinter.CTk):
 
         self.timer_task_all = []
 
-        self.timer_task_01 = 0
-        self.timer_task_02 = 0
-        self.timer_task_03 = 0
-        self.timer_task_04 = 0
-        self.timer_task_05 = 0
-        self.timer_task_06 = 0
-        self.timer_task_07 = 0
-        self.timer_task_08 = 0
-
-        self.task_flag_01 = True
-        self.task_flag_02 = True
-        self.task_flag_03 = True
-        self.task_flag_04 = True
-        self.task_flag_05 = True
-        self.task_flag_06 = True
-        self.task_flag_07 = True
-        self.task_flag_08 = True
-
         self.level_times = {n: 0 for n in range(1, LEVEL_COUNT + 1)}
         self.task_flag   = {n: True for n in range(1, LEVEL_COUNT + 1)}
 
@@ -2262,7 +2183,7 @@ END $$;
         self.start_timer()
 
     def _on_level_solved(self, level):
-        print(f"[DEBUG] level={level} max_level={self.max_level} LEVEL_COUNT={LEVEL_COUNT}")
+
         if not self.task_flag[level]:
             return
         seconds = round(time.time() - self.start_task, 2)   # timer_return selalu 0
@@ -2284,6 +2205,25 @@ END $$;
         self.current_question = level + 1
     
     def skip_current_level(self, event=None):
+        """Skip the current level when Enter key is pressed"""
+        if not hasattr(self, 'current_question') or not hasattr(self, 'timer_running') or not self.timer_running:
+            return
+
+        level = self.current_question
+        if level < 1 or level > LEVEL_COUNT:
+            return
+
+        time_elapsed = round(time.time() - self.start_task, 2)
+        print(f"Skipping level {level} after {time_elapsed} seconds")
+
+        self._on_level_skipped(level, time_elapsed)
+
+        # Lanjut ke level berikutnya atau akhiri tes
+        if self.current_question <= min(self.max_level, LEVEL_COUNT):
+            self._start_level(self.current_question)
+        else:
+            self.end_test()
+        
         """Skip the current level when Enter key is pressed"""
         if not hasattr(self, 'current_question') or not hasattr(self, 'timer_running') or not self.timer_running:
             return
