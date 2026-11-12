@@ -271,15 +271,6 @@ for variants in LEVEL_VARIANTS.values():
                 f'Lvl {level_num}{variant[1]}.PNG'  # e.g., 'Lvl 1a.png'
             )
 
-#scale_percent = 70 # percent of original size
-#task_width = int(task_0B.shape[1] * scale_percent / 100)
-#task_height = int(task_0B.shape[0] * scale_percent / 100)
-#task_dim = (task_width, task_height)
-
-#task_resized = cv2.resize(task_0B, task_dim, interpolation = cv2.INTER_AREA)
-#cv2.imshow('Task', task_0B)
-
-
 face_01 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'LABEL_50x50', '01.png'), cv2.IMREAD_COLOR)
 face_02 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'LABEL_50x50', '02.png'), cv2.IMREAD_COLOR)
 face_03 = cv2.imread(os.path.join(BASE_DIR, 'FILES', 'LABEL_50x50', '03.png'), cv2.IMREAD_COLOR)
@@ -492,46 +483,6 @@ def play_audio(wav):
 
     sd.play(data, samplerate)
     sd.wait()
-
-# def tts_indo(text):
-#     model_path = os.path.join("checkpoint_1260000-inference.pth")
-#     config_path = os.path.join("config.json")
-#     speakers_file_path = os.path.join("speakers.pth")
-#     speaker = "SU-03887"
-#     # 1. konversi teks ke fonem
-#     g2p = G2P()
-#     phoneme_text = g2p(text)
-#     # Contoh: “Rumah Agus terbakar.” → “ˈrumah ˈaɡʊs tərˈbakar.”  
-#     print(f"Phoneme text: {phoneme_text}")
-
-#     # 2. Load model (tanpa speaker_idx di konstruktor)
-#     tts = TTS(
-#         model_path=model_path,
-#         config_path=config_path,
-#         speakers_file_path=speakers_file_path,
-#         progress_bar=False,
-#         gpu=False
-#     )
-
-#     # Jika model multi-speaker, bisa lihat daftar speaker:
-#     # try:
-#     #     print("Available speakers:", tts.speakers)
-#     # except AttributeError:
-#     #     pass
-
-#     # panggil tts
-#     wav = tts.tts(
-#         text=phoneme_text,
-#         speaker=speaker
-#     )
-#     # kemungkinan wav adalah numpy array, dan ada sample rate default dalam config
-    
-#     # Temuin sample rate modelnya (bisa di tts.synthesizer.sample_rate atau ada field di tts)
-#     sr = tts.synthesizer.output_sample_rate if hasattr(tts, "synthesizer") else 22050  # ganti kalau model lain
-
-#     # mainkan audio
-#     sd.play(wav, samplerate=sr)
-#     sd.wait()
 
 try:
     import mediapipe as mp
