@@ -17,9 +17,9 @@ import serial.tools.list_ports
 from datetime import datetime
 from eyetracker_module import EyeTrackerHandler
 
- # Load environment variables from .env file
-env_path = Path('.') / '.env'
-load_dotenv(dotenv_path=env_path)
+# Load environment variables from .env file
+env_path = Path(__file__).resolve().parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
 ERROR_LOG_PATH = Path(__file__).resolve().parent / "runtime_errors.log"
 
@@ -2262,6 +2262,7 @@ END $$;
         self.start_timer()
 
     def _on_level_solved(self, level):
+        print(f"[DEBUG] level={level} max_level={self.max_level} LEVEL_COUNT={LEVEL_COUNT}")
         if not self.task_flag[level]:
             return
         seconds = round(time.time() - self.start_task, 2)   # timer_return selalu 0
