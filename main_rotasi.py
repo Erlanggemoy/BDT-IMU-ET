@@ -77,6 +77,8 @@ try:
 except (ValueError, TypeError):
     MAX_LEVEL = 8
     print(f"Warning: Invalid MAX_LEVEL in .env file. Using default value: {MAX_LEVEL}")
+
+LEVEL_COUNT = 8
                                                         
 #
 # \import pyautogui
@@ -1825,6 +1827,9 @@ class TimeIn(customtkinter.CTk):
         self.task_flag_07 = True
         self.task_flag_08 = True
 
+        self.level_times = {n: 0 for n in range(1, LEVEL_COUNT + 1)}
+        self.task_flag   = {n: True for n in range(1, LEVEL_COUNT + 1)}
+
         self.current_question = 1
 
         self.cognitive_age_list = []
@@ -2228,7 +2233,55 @@ END $$;
         customtkinter.CTkButton(pf, text="Retry Test", font=("Helvetica", int(H * 0.035)),
             height=int(H * 0.08), command=self.retry_test
         ).grid(row=3, column=0, columnspan=2, sticky="ew", padx=20, pady=(5, 20))
-        
+
+
+    def _play_praise(self, seconds):
+        t = int(seconds)
+        for limit, name in ((10, "menakjubkan"), (15, "hebat_sekali"), (20, "mantap"),
+                            (25, "kerja_bagus"), (30, "ayo_semangat")):
+            if t < limit:
+                play_audio(f"AUDIO/{name}.wav")
+                return
+        play_audio("AUDIO/jangan_menyerah.wav")
+
+    def _record_level(self, level, seconds):
+        self.level_times[level] = seconds
+        self.timer_task_all.append(seconds)
+        self.cognitive_age_list.append(self.estimate_cognitive_age(seconds))
+        self.task_flag[level] = False
+
+    def _start_level(self, level):
+        self.current_question = level
+        variant = self.get_random_variant(level)
+        self.current_variant = variant
+        self.load_level_image(variant)
+        self.current_level_button.grid_remove()
+        self.show_current_level_button(level)
+        self.start_task = time.time()
+        self.reset_timer()
+        self.start_timer()
+
+    def _on_level_solved(self, level):
+        if not self.task_flag[level]:
+            return
+        seconds = round(time.time() - self.start_task, 2)   # timer_return selalu 0
+        self._record_level(level, seconds)
+        print(f"TASK {level} COMPLETED in {seconds} seconds")
+        self._play_praise(seconds)
+        if level >= min(self.max_level, LEVEL_COUNT):
+            self.end_test()
+        else:
+            play_audio(f"AUDIO/lanjut_lvl{level + 1}.wav")
+            self._start_level(level + 1)
+
+    def _on_level_skipped(self, level, elapsed):
+        self._record_level(level, elapsed)
+        print(f"TASK {level} SKIPPED after {elapsed} seconds")
+        self._play_praise(elapsed)
+        if self.max_level != level:
+            play_audio(f"AUDIO/lanjut_lvl{level + 1}.wav")
+        self.current_question = level + 1
+    
     def skip_current_level(self, event=None):
         """Skip the current level when Enter key is pressed"""
         if not hasattr(self, 'current_question') or not hasattr(self, 'timer_running') or not self.timer_running:
