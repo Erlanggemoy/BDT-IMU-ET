@@ -2015,8 +2015,10 @@ END $$;
 
         H = max(self.winfo_height(), 600)
         big, mid = int(H * 0.05), int(H * 0.022)
-        total = max(d["gaze"], 0.001)
         aoi = d["aoi"]
+        total = max(d["total_time"], 0.001)               # pembagi: waktu tes (sebelumnya d["gaze"])
+        screen_t = aoi["AOI1"] + aoi["AOI2"]
+        block_t = max(d["total_time"] - screen_t, 0)      # = melihat balok fisik
 
         customtkinter.CTkLabel(pf, text=f"Tes Selesai — {d['name']}",
             font=("Helvetica", int(H * 0.045), "bold")
@@ -2026,9 +2028,10 @@ END $$;
         cards.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=20)
         cards.grid_rowconfigure(0, weight=1)
         items = [("Waktu Penyelesaian", f"{d['total_time']:.2f} dtk"),
-                ("Durasi Menatap Layar", f"{d['gaze']:.2f} dtk"),
-                ("Rata-rata per Level", f"{d['avg']:.2f} dtk"),
-                ("Usia Kognitif", f"{d['age_cog']} th")]
+                 ("Menatap Layar", f"{screen_t:.2f} dtk"),
+                 ("Melihat Balok", f"{block_t:.2f} dtk"),
+                 ("Rata-rata per Level", f"{d['avg']:.2f} dtk"),
+                 ("Usia Kognitif", f"{d['age_cog']} th")]
         for i, (t, v) in enumerate(items):
             cards.grid_columnconfigure(i, weight=1, uniform="k")
             self._card(cards, t, v, big, mid).grid(row=0, column=i, sticky="nsew", padx=8, pady=8)
@@ -2037,16 +2040,15 @@ END $$;
         left.grid(row=2, column=0, sticky="nsew", padx=(20, 10), pady=10)
         customtkinter.CTkLabel(left, text="Area Tatapan (AOI)",
             font=("Helvetica", mid, "bold")).pack(pady=(15, 5))
-        for name, key in (("AOI 1 · Stopwatch", "AOI1"), ("AOI 2 · Soal", "AOI2")):
-            pct = aoi[key] / total
-            customtkinter.CTkLabel(left, text=f"{name}: {aoi[key]:.2f} dtk ({pct*100:.0f}%)",
+        for name, val in (("AOI 1 · Stopwatch", aoi["AOI1"]),
+                          ("AOI 2 · Soal", aoi["AOI2"]),
+                          ("Melihat balok fisik", block_t)):
+            pct = val / total
+            customtkinter.CTkLabel(left, text=f"{name}: {val:.2f} dtk ({pct*100:.0f}%)",
                 font=("Helvetica", mid)).pack(pady=(15, 2))
             bar = customtkinter.CTkProgressBar(left, height=int(H * 0.03))
             bar.pack(fill="x", padx=30)
             bar.set(min(pct, 1.0))
-        out = max(total - aoi["AOI1"] - aoi["AOI2"], 0)
-        customtkinter.CTkLabel(left, text=f"Di luar AOI: {out:.2f} dtk",
-            font=("Helvetica", mid)).pack(pady=15)
 
         right = customtkinter.CTkFrame(pf, corner_radius=12)
         right.grid(row=2, column=1, sticky="nsew", padx=(10, 20), pady=10)
@@ -2263,14 +2265,15 @@ END $$;
         return (x, y, x + w.winfo_width(), y + w.winfo_height())
 
     def get_aoi_rects(self):
-        r = {"AOI1": self._widget_rect(self.aoi1_frame),
-            "AOI2": self._widget_rect(self.aoi2_frame)}
+        W, H = self._screen_w, self._screen_h
+        r = {"AOI1": (0, 0, W // 2, H),
+             "AOI2": (W // 2, 0, W, H)}
         x1, y1, x2, y2 = self._widget_rect(self.image_label)
         mx, my = (x1 + x2) // 2, (y1 + y2) // 2
-        r["B1"] = (x1, y1, mx, my)   # kiri-atas
-        r["B2"] = (mx, y1, x2, my)   # kanan-atas
-        r["B3"] = (x1, my, mx, y2)   # kiri-bawah
-        r["B4"] = (mx, my, x2, y2)   # kanan-bawah
+        r["B1"] = (x1, y1, mx, my)
+        r["B2"] = (mx, y1, x2, my)
+        r["B3"] = (x1, my, mx, y2)
+        r["B4"] = (mx, my, x2, y2)
         return r
 
     def _refresh_aoi_rects(self):
@@ -2526,7 +2529,6 @@ END $$;
 
         if self.game_started:
             self.button_0._state = "disabled"
-        # self.button_0._state = "disabled"
 
         ret, frame = cap.read()
         if not ret:
@@ -2539,60 +2541,43 @@ END $$;
         
         # Handle button mode image visibility
         self.handle_button_mode()
-        # Don't resize to 1000x800, use original resolution for better performance
-        # frame = cv2.resize(frame, (1000, 800))
 
-        # --------------------------------------------------------------------------- Start Process
+        # --------------------------------------------------------------------------- End Process
+        detections = self._poll_yolo(frame)  # Poll YOLOv8 model for detections
+        track_input, box_num, box_face, box_design, box_distance, pos_x, pos_y = self._scan_blocks(frame, detections)
+        self._update_trackers(frame, track_input)  # Update trackers with new detections
+        self._check_level(frame, box_design, box_distance, pos_x, pos_y)  # Check if the current level is solved
+        self._process_hands(frame)  # Process hand landmarks using MediaPipe Hands
+        self.cam_preview_frame = frame
 
+        if self._render_preview(frame):
+            return
+        self._update_fps() 
+        self.after(10, self.streaming)
+        
+    def _scan_blocks(self, frame, detections):
         # Frame threshold 
         imgBlur = cv2.GaussianBlur(frame, (7,7), 1)
         imgGray = cv2.cvtColor(imgBlur, cv2.COLOR_RGB2GRAY)
-        ret, imgThres = cv2.threshold(imgGray, 175, 255, cv2.THRESH_BINARY) #175   195
-        
-        # Make detections using background thread (non-blocking)
-        self.frame_count += 1
-        
-        # Only submit frame to YOLO every N frames to reduce load
-        if self.frame_count % (self.yolo_skip_frames + 1) == 0:
-            if self.yolo_thread.frame_queue.empty():  # Only if queue is empty
-                try:
-                    # MUST copy frame to avoid race condition with drawing operations
-                    # Use numpy copy which is faster than frame.copy()
-                    frame_for_yolo = np.array(frame, copy=True)
-                    self.yolo_thread.frame_queue.put_nowait(frame_for_yolo)
-                except:
-                    pass  # Queue full, skip this frame
-        
-        # Get latest detection results if available (non-blocking)
-        if not self.yolo_thread.result_queue.empty():
-            try:
-                self.latest_detections = self.yolo_thread.result_queue.get_nowait()
-            except:
-                pass
-        
-        # Use latest detections (may be from previous frame, but that's OK)
-        list_tracked_objects = self.latest_detections
-
-        #if len(list_tracked_objects) == 4: #>0
-        
+        ret, imgThres = cv2.threshold(imgGray, 175, 255, cv2.THRESH_BINARY) 
+                
         box_num = 0
         box_face = 0
         box_design = []
         box_distance = []
-        box_design_sort = []
-
+        
         track_input = []   # (cx, cy, face_state, x1, y1, x2, y2, conf) untuk rotation tracker
         #avg_confidence = []
-
+        
         pos_x = []
         pos_y = []
-
-        for x1, y1, x2, y2, conf_pred, cls_id, cls in list_tracked_objects:
-
+        
+        for x1, y1, x2, y2, conf_pred, cls_id, cls in detections:
+        
             if conf_pred > camera_settings["conf"]:
-
+        
                 #avg_confidence.append( round(conf_pred,2) )
-
+        
                 center_x = int ((x1+x2)/2)
                 center_y = int ((y1+y2)/2)
                 x1 = int(x1)
@@ -2601,13 +2586,13 @@ END $$;
                 y2 = int(y2)
                 w = int (x2-x1)
                 h = int (y2-y1)
-
+        
                 box_distance.append( int (math.sqrt( pow(center_x, 2) + pow(center_y, 2) )) )
                 #print(center_x, center_y)
-
+        
                 pos_x.append( int (center_x) )
                 pos_y.append( int (center_y) )
-                
+                        
                 # Optimize: check bounds before resize to avoid errors
                 if y1 >= 0 and y2 <= imgThres.shape[0] and x1 >= 0 and x2 <= imgThres.shape[1] and (y2-y1) > 0 and (x2-x1) > 0:
                     dim = (100, 100)
@@ -2616,17 +2601,17 @@ END $$;
                     # Skip invalid box
                     continue
                 #cv2.imshow("Box_"+str(box_num), imgBox)
-                
+                        
                 box_class = [ imgBox[50,25], imgBox[75,50], imgBox[50,75], imgBox[25,50] ]
                 track_input.append((center_x, center_y, FACE_STATE_MAP.get(tuple(int(v) for v in box_class), 0), x1, y1, x2, y2, float(conf_pred)))
-
+        
                 if box_class == [0,0,0,0] :
                     box_face = 1
                     box_design.append(1)
                 elif box_class == [255,255,255,255]:
                     box_face = 2
                     box_design.append(2)
-                #... dipisah
+                    #... dipisah
                 elif box_class == [255,255,0,0]:
                     box_face = 3
                     box_design.append(3)  
@@ -2639,12 +2624,12 @@ END $$;
                 elif box_class == [0,255,255,0]:
                     box_face = 6
                     box_design.append(6)               
-                
+                        
                 cv2.rectangle(frame, (x1,y1), (x1+w, y1+h), (0, 255, 0), 2)
-
+        
                 box_num = box_num + 1
                 roi_label = frame[y1:y1+50, x1:x1+50]
-
+        
                 if(box_face == 1):
                     try:                            
                         roi_label [np.where(mask_face_01)] = 0
@@ -2681,11 +2666,13 @@ END $$;
                         roi_label += face_06
                     except IndexError:
                         pass
-
-        
+                    
+        return track_input, box_num, box_face, box_design, box_distance, pos_x, pos_y
+    
+    def _update_trackers(self, frame, track_input):
         self.cam_stats = (len(track_input), sum(1 for o in track_input if o[2] != 0))
         self.cam_blocks = track_input
-
+        
         # Setelan deteksi dari dialog Detection Check berlaku langsung
         self.rotation_tracker.stable_frames = camera_settings["stable_frames"]
         self.rotation_tracker.lift_area_ratio = camera_settings["lift_ratio"]
@@ -2693,91 +2680,104 @@ END $$;
             self.check_tracker.stable_frames = camera_settings["stable_frames"]
             self.check_tracker.lift_area_ratio = camera_settings["lift_ratio"]
             self.check_tracker.update(0, track_input, self.hand_points, self.mp_hands_detector is not None)
-
+        
         # Hitung rotasi / flip / pengangkatan balok (hanya saat tes berjalan)
-        if self.game_started and 1 <= self.current_question <= 8:
-            self.rotation_tracker.update(self.current_question, track_input,
-                                         self.hand_points, self.mp_hands_detector is not None)
-            if SHOW_ROTATION_COUNT:
-                rot_n, flip_n, hid_n = self.rotation_tracker.level_counts(self.current_question)
-                cv2.putText(frame, f"Rotasi: {rot_n}  Flip: {flip_n}  Angkat*: {hid_n}", (130, 60),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+        if self.game_started and 1 <= self.current_question <= LEVEL_COUNT:
+            self.rotation_tracker.update(self.current_question, track_input, self.hand_points, self.mp_hands_detector is not None)
+        if SHOW_ROTATION_COUNT:
+            rot_n, flip_n, hid_n = self.rotation_tracker.level_counts(self.current_question)
+            cv2.putText(frame, f"Rotasi: {rot_n}  Flip: {flip_n}  Angkat*: {hid_n}", (130, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
 
-        # >>>>>>>>>>>>
-
+    def _check_level(self, frame, box_design, box_distance, pos_x, pos_y):
         if len(box_design) == 4 and len(box_distance) == 4:
-
+        
             # Draw lines connecting boxes (optimized with polylines)
             pts = np.array([
                 [pos_x[0], pos_y[0]],
                 [pos_x[1], pos_y[1]],
                 [pos_x[2], pos_y[2]],
                 [pos_x[3], pos_y[3]]
-            ], np.int32)
+                ], np.int32)
             # Draw all connecting lines at once
             for i in range(4):
                 for j in range(i+1, 4):
                     cv2.line(frame, tuple(pts[i]), tuple(pts[j]), (0, 0, 0), 2)
-
+        
             #pos_x_order = [ pos_x[0], pos_x[1], pos_x[2], pos_x[3] ]
             #pos_y_order = [ pos_y[0], pos_y[1], pos_y[2], pos_y[3] ]
-
+        
             len_0 = int (math.sqrt( (pos_x[0]-pos_x[1])**2 + (pos_y[0]-pos_y[1])**2 ) )
             len_1 = int (math.sqrt( (pos_x[1]-pos_x[2])**2 + (pos_y[1]-pos_y[2])**2 ) )
             len_2 = int (math.sqrt( (pos_x[2]-pos_x[3])**2 + (pos_y[2]-pos_y[3])**2 ) )
             len_3 = int (math.sqrt( (pos_x[3]-pos_x[0])**2 + (pos_y[3]-pos_y[0])**2 ) )
             len_4 = int (math.sqrt( (pos_x[0]-pos_x[2])**2 + (pos_y[0]-pos_y[2])**2 ) )
             len_5 = int (math.sqrt( (pos_x[1]-pos_x[3])**2 + (pos_y[1]-pos_y[3])**2 ) )
-
-            # Order Len
-            len_order = [ len_0, len_1, len_2, len_3, len_4, len_5 ]
+        
+                    # Order Len
+            len_order = [len_0, len_1, len_2, len_3, len_4, len_5]
             len_rect = sorted(len_order)
+        
+                    #print(len_rect)
+        
+            if (abs(len_rect[0] - len_rect[1]) < 100) and \
+                (abs(len_rect[0] - len_rect[2]) < 100) and \
+                (abs(len_rect[0] - len_rect[3]) < 100) and \
+                (abs(len_rect[1] - len_rect[2]) < 100) and \
+                (abs(len_rect[1] - len_rect[3]) < 100) and \
+                (abs(len_rect[2] - len_rect[3]) < 100):
+        
+                    # 1. Gabungkan posisi x, y, dan index asli
+                    indexed_positions = [(pos_x[i], pos_y[i], i) for i in range(len(pos_x))]
+        
+                    # 2. Urutkan berdasarkan x untuk memisahkan kelompok kiri dan kanan
+                    sorted_by_x = sorted(pos_x)
+                    mid_point = (sorted_by_x[1] + sorted_by_x[2]) / 2  # Titik tengah antara x terbesar kedua dan terkecil kedua
+        
+                    # 3. Urutkan: kelompok kiri (x < mid_point) dulu, lalu kelompok kanan, dalam setiap kelompok urutkan berdasarkan y
+                    indexed_positions.sort(key=lambda p: (p[0] >= mid_point, p[1]))
+        
+                    # 4. Ambil index asli yang sudah terurut
+                    sort_index = [idx for (x, y, idx) in indexed_positions]
+        
+                    # 5. Urutkan box_design berdasarkan index yang sudah diurutkan
+                    box_design_sort = [box_design[i] for i in sort_index]
+        
+                    current_answer = LEVEL_ANSWERS.get(self.current_variant, []) if self.game_started else []
+        
+                    if (self.game_started and 1 <= self.current_question <= LEVEL_COUNT
+                            and box_design_sort == current_answer):
+                        self._on_level_solved(self.current_question)
 
-            #print(len_rect)
+    def _poll_yolo(self, frame):
+        # Make detections using background thread (non-blocking)
+        self.frame_count += 1
+                
+         # Only submit frame to YOLO every N frames to reduce load
+        if self.frame_count % (self.yolo_skip_frames + 1) == 0:
+            if self.yolo_thread.frame_queue.empty():  # Only if queue is empty
+                try:
+                    frame_for_yolo = np.array(frame, copy=True)
+                    self.yolo_thread.frame_queue.put_nowait(frame_for_yolo)
+                except:
+                    pass  # Queue full, skip this frame
+                
+        # Get latest detection results if available (non-blocking)
+        if not self.yolo_thread.result_queue.empty():
+            try:
+                self.latest_detections = self.yolo_thread.result_queue.get_nowait()
+            except:
+                pass
+                
+        # Use latest detections (may be from previous frame, but that's OK)
+        return self.latest_detections
 
-            if  ( abs(len_rect[0] - len_rect[1]) < 100) and \
-                ( abs(len_rect[0] - len_rect[2]) < 100) and \
-                ( abs(len_rect[0] - len_rect[3]) < 100) and \
-                ( abs(len_rect[1] - len_rect[2]) < 100) and \
-                ( abs(len_rect[1] - len_rect[3]) < 100) and \
-                ( abs(len_rect[2] - len_rect[3]) < 100):
-
-                # 1. Gabungkan posisi x, y, dan index asli
-                indexed_positions = [(pos_x[i], pos_y[i], i) for i in range(len(pos_x))]
-
-                # 2. Urutkan berdasarkan x untuk memisahkan kelompok kiri dan kanan
-                sorted_by_x = sorted(pos_x)
-                mid_point = (sorted_by_x[1] + sorted_by_x[2]) / 2  # Titik tengah antara x terbesar kedua dan terkecil kedua
-
-                # 3. Urutkan: kelompok kiri (x < mid_point) dulu, lalu kelompok kanan, dalam setiap kelompok urutkan berdasarkan y
-                indexed_positions.sort(key=lambda p: (p[0] >= mid_point, p[1]))
-
-                # 4. Ambil index asli yang sudah terurut
-                sort_index = [idx for (x, y, idx) in indexed_positions]
-
-                # 5. Urutkan box_design berdasarkan index yang sudah diurutkan
-                box_design_sort = [box_design[i] for i in sort_index]
-
-                current_answer = LEVEL_ANSWERS.get(self.current_variant, []) if self.game_started else []
-
-                if (self.game_started and 1 <= self.current_question <= LEVEL_COUNT
-                        and box_design_sort == current_answer):
-                    self._on_level_solved(self.current_question)
-
-                box_design = []
-                box_distance = []
-                box_design_sort = []
-    
-
-
-        # --------------------------------------------------------------------------- End Process
-
+    def _process_hands(self, frame):
         # Use persistent MediaPipe Hands instance (not recreated every frame)
         # Skip MediaPipe on same frames as YOLO to reduce load
         if self.mp_hands_detector is not None and self.frame_count % (self.mediapipe_skip_frames + 1) == 0:
             # frame_rgb already in RGB format, no need to convert
             hand_result = self.mp_hands_detector.process(frame)
-
+        
             if hand_result and hand_result.multi_hand_landmarks:
                 fh, fw = frame.shape[:2]
                 self.hand_points = [(lm.x * fw, lm.y * fh)
@@ -2787,14 +2787,12 @@ END $$;
             else:
                 self.hand_points = []
 
-        self.cam_preview_frame = frame
-
-        # Update camera display only if camera is not hidden
+    def _render_preview(self, frame):
         if not HIDE_CAMERA and self.camera is not None and not self.game_started:
             # Convert frame to ImageTk format
             # img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             img = Image.fromarray(frame)
-            
+                    
             # Calculate aspect ratio
             frame_height, frame_width = frame.shape[:2]
             container_width = self.video_frame_1.winfo_width()
@@ -2805,27 +2803,23 @@ END $$;
                 self.camera.imgtk = ImgTks
                 self.camera.configure(image=ImgTks)
                 self.after(10, self.streaming)
-                return
-            
+                return True
+                    
             # Calculate scaling factor while maintaining aspect ratio
             width_ratio = container_width / frame_width
             height_ratio = container_height / frame_height
             scale = min(width_ratio, height_ratio)
-            
+                    
             # Resize image if needed
             if scale < 1:
                 new_width = int(frame_width * scale)
                 new_height = int(frame_height * scale)
                 img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
+                    
             ImgTks = ImageTk.PhotoImage(image=img)
             self.camera.imgtk = ImgTks
             self.camera.configure(image=ImgTks)
-
-        self._update_fps()  # Update FPS counter and print debug info if enabled
-
-        # Reduce delay for better responsiveness
-        self.after(10, self.streaming)
+        return False
 
     def _update_fps(self):
         # FPS monitoring
