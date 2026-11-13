@@ -2821,12 +2821,18 @@ END $$;
             ImgTks = ImageTk.PhotoImage(image=img)
             self.camera.imgtk = ImgTks
             self.camera.configure(image=ImgTks)
-        
+
+        self._update_fps()  # Update FPS counter and print debug info if enabled
+
+        # Reduce delay for better responsiveness
+        self.after(10, self.streaming)
+
+    def _update_fps(self):
         # FPS monitoring
         self.fps_counter += 1
         if time.time() - self.fps_start_time >= 1.0:
             self.current_fps = self.fps_counter
-            
+                    
             # Enhanced FPS output with debug info
             if self.debug_mode:
                 queue_size = self.yolo_thread.frame_queue.qsize()
@@ -2835,12 +2841,9 @@ END $$;
                 print(f"FPS: {self.current_fps} | YOLO: {last_inference:.1f}ms | Queue: {queue_size}/{result_size}")
             else:
                 print(f"FPS: {self.current_fps}")
-            
+                    
             self.fps_counter = 0
             self.fps_start_time = time.time()
-
-        # Reduce delay for better responsiveness
-        self.after(10, self.streaming)
     
     def cleanup(self):
         """Cleanup resources before closing"""
