@@ -307,6 +307,11 @@ ret_img_07, mask_img_07 = cv2.threshold(gray_img_07, 1, 255, cv2.THRESH_BINARY)
 ret_img_08, mask_img_08 = cv2.threshold(gray_img_08, 1, 255, cv2.THRESH_BINARY)
 ret_img_09, mask_img_09 = cv2.threshold(gray_img_09, 1, 255, cv2.THRESH_BINARY)
 
+FACE_OVERLAYS = {
+    1: (mask_face_01, face_01), 2: (mask_face_02, face_02),
+    3: (mask_face_03, face_03), 4: (mask_face_04, face_04),
+    5: (mask_face_05, face_05), 6: (mask_face_06, face_06),
+}
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Connect to Database Server 
@@ -1407,7 +1412,7 @@ class SerialReaderThread(threading.Thread):
         if platform.system() == 'Linux':
             # Check for /dev/rfcomm0 (Bluetooth)
             if os.path.exists('/dev/rfcomm0'):
-                print(f">>> Found Bluetooth RFCOMM at /dev/rfcomm0")
+                print(">>> Found Bluetooth RFCOMM at /dev/rfcomm0")
                 return '/dev/rfcomm0'
         
         # Check standard serial ports
@@ -1750,7 +1755,6 @@ class TimeIn(customtkinter.CTk):
         )
         # TIDAK perlu .place() atau .lift()/.lower() di sini saat ini
         self._latest_gaze = None
-        self._last_poll_t = None
         self._screen_w = self.winfo_screenwidth()
         self._screen_h = self.winfo_screenheight()
         self.aoi_dwell = {k: 0.0 for k in ["AOI1","AOI2","B1","B2","B3","B4"]}
@@ -2278,7 +2282,7 @@ END $$;
 
     def _refresh_aoi_rects(self):
         if self.game_started:
-            self._aoi_rects = self.get_aoi_rects()   # dari saran sebelumnya
+            self._aoi_rects = self.get_aoi_rects()   
         self.after(100, self._refresh_aoi_rects)
 
     def _on_gaze_update(self, gaze):
@@ -2542,8 +2546,7 @@ END $$;
         # Handle button mode image visibility
         self.handle_button_mode()
 
-        # --------------------------------------------------------------------------- End Process
-        detections = self._poll_yolo(frame)  # Poll YOLOv8 model for detections
+        detections = self._poll_yolo(frame)  # YOLO
         track_input, box_num, box_face, box_design, box_distance, pos_x, pos_y = self._scan_blocks(frame, detections)
         self._update_trackers(frame, track_input)  # Update trackers with new detections
         self._check_level(frame, box_design, box_distance, pos_x, pos_y)  # Check if the current level is solved
@@ -2603,67 +2606,23 @@ END $$;
                 #cv2.imshow("Box_"+str(box_num), imgBox)
                         
                 box_class = [ imgBox[50,25], imgBox[75,50], imgBox[50,75], imgBox[25,50] ]
+                face = FACE_STATE_MAP.get(tuple(int(v) for v in box_class), 0)
                 track_input.append((center_x, center_y, FACE_STATE_MAP.get(tuple(int(v) for v in box_class), 0), x1, y1, x2, y2, float(conf_pred)))
         
-                if box_class == [0,0,0,0] :
-                    box_face = 1
-                    box_design.append(1)
-                elif box_class == [255,255,255,255]:
-                    box_face = 2
-                    box_design.append(2)
-                    #... dipisah
-                elif box_class == [255,255,0,0]:
-                    box_face = 3
-                    box_design.append(3)  
-                elif box_class == [255,0,0,255]:
-                    box_face = 4
-                    box_design.append(4)  
-                elif box_class == [0,0,255,255]:
-                    box_face = 5
-                    box_design.append(5)  
-                elif box_class == [0,255,255,0]:
-                    box_face = 6
-                    box_design.append(6)               
+                if face:
+                    box_face = face
+                    box_design.append(face)     
                         
                 cv2.rectangle(frame, (x1,y1), (x1+w, y1+h), (0, 255, 0), 2)
         
                 box_num = box_num + 1
                 roi_label = frame[y1:y1+50, x1:x1+50]
         
-                if(box_face == 1):
-                    try:                            
-                        roi_label [np.where(mask_face_01)] = 0
-                        roi_label += face_01
-                    except IndexError:
-                        pass
-                elif(box_face == 2):
-                    try:                            
-                        roi_label [np.where(mask_face_02)] = 0
-                        roi_label += face_02
-                    except IndexError:
-                        pass
-                elif(box_face == 3):
-                    try:                            
-                        roi_label [np.where(mask_face_03)] = 0
-                        roi_label += face_03
-                    except IndexError:
-                        pass
-                elif(box_face == 4):
-                    try:                            
-                        roi_label [np.where(mask_face_04)] = 0
-                        roi_label += face_04
-                    except IndexError:
-                        pass
-                elif(box_face == 5):
-                    try:                            
-                        roi_label [np.where(mask_face_05)] = 0
-                        roi_label += face_05
-                    except IndexError:
-                        pass
-                elif(box_face == 6):
-                    try:                            
-                        roi_label [np.where(mask_face_06)] = 0
-                        roi_label += face_06
+                if box_face in FACE_OVERLAYS:
+                    mask, face_img = FACE_OVERLAYS[box_face]
+                    try:
+                        roi_label[np.where(mask)] = 0
+                        roi_label += face_img
                     except IndexError:
                         pass
                     
