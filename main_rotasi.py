@@ -17,6 +17,7 @@ from scoring import estimate_cognitive_age, average_cognitive_age
 from scoring import cognitive_fitness as fitness_from_ages
 from datetime import datetime
 from eyetracker_module import EyeTrackerHandler
+from aoi import AoiTracker, build_rects
 
 # Load environment variables from .env file
 env_path = Path(__file__).resolve().parent / '.env'
@@ -1759,9 +1760,7 @@ class TimeIn(customtkinter.CTk):
         self._latest_gaze = None
         self._screen_w = self.winfo_screenwidth()
         self._screen_h = self.winfo_screenheight()
-        self.aoi_dwell = {k: 0.0 for k in ["AOI1","AOI2","B1","B2","B3","B4"]}
-        self._aoi_rects = {}
-        self._prev_gaze_ts = None
+        self.aoi = AoiTracker(self._screen_w, self._screen_h)
         self.after(16, self._poll_gaze)
         self.after(100, self._refresh_aoi_rects)
         self.game_started = False
@@ -1802,7 +1801,7 @@ class TimeIn(customtkinter.CTk):
         self.stop_timer()
         self.current_level_button.grid_remove()
         total_gaze_duration = self.et.gaze_duration_seconds
-        aoi = dict(self.aoi_dwell)
+        aoi = self.aoi.snapshot()
         self.et.stop()
         self.game_started = False
         self.gaze_dot.delete("gaze")
@@ -2261,38 +2260,18 @@ END $$;
         return (x, y, x + w.winfo_width(), y + w.winfo_height())
 
     def get_aoi_rects(self):
-        W, H = self._screen_w, self._screen_h
-        r = {"AOI1": (0, 0, W // 2, H),
-             "AOI2": (W // 2, 0, W, H)}
-        x1, y1, x2, y2 = self._widget_rect(self.image_label)
-        mx, my = (x1 + x2) // 2, (y1 + y2) // 2
-        r["B1"] = (x1, y1, mx, my)
-        r["B2"] = (mx, y1, x2, my)
-        r["B3"] = (x1, my, mx, y2)
-        r["B4"] = (mx, my, x2, y2)
-        return r
+        return build_rects(self._screen_w, self._screen_h, self._widget_rect(self.image_label))
 
     def _refresh_aoi_rects(self):
         if self.game_started:
-            self._aoi_rects = self.get_aoi_rects()   
+            self.aoi.set_rects(self.get_aoi_rects()) 
         self.after(100, self._refresh_aoi_rects)
 
     def _on_gaze_update(self, gaze):
         self._latest_gaze = gaze
-        if not self.game_started or not self._aoi_rects:
+        if not self.game_started:
             return
-        ts = gaze["timestamp"]
-        prev, self._prev_gaze_ts = self._prev_gaze_ts, ts
-        if prev is None:
-            return
-        dt = (ts - prev) / 1_000_000
-        if not (0 < dt < 0.5):          # aturan yang sama dengan modul
-            return
-        gx = gaze["x"] * self._screen_w   # simpan winfo_screenwidth() sekali di __init__
-        gy = gaze["y"] * self._screen_h
-        for name, (x1, y1, x2, y2) in self._aoi_rects.items():
-            if x1 <= gx < x2 and y1 <= gy < y2:
-                self.aoi_dwell[name] += dt
+        self.aoi.on_gaze(gaze["timestamp"], gaze["x"], gaze["y"])
 
     def _poll_gaze(self):
         # Dipanggil berulang dari main thread lewat self.after() --
@@ -2343,10 +2322,9 @@ END $$;
 
     def _begin_test(self):
         """Dipanggil setelah hitung mundur selesai: tes benar-benar dimulai."""
+        self.aoi.reset()        
         self.game_started = True
         print("START")
-        self._prev_gaze_ts = None
-        self.aoi_dwell = {k: 0.0 for k in self.aoi_dwell}
         self.et.start()
         #self.start_task = time.time()
         
