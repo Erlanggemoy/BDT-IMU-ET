@@ -21,6 +21,8 @@ NORMAL_PATTERN = os.getenv('NORMAL_PATTERN', 'true').lower() == 'true'
 BUTTON_MODE = os.getenv('BUTTON_MODE', 'false').lower() == 'true'
 HIDE_CAMERA = os.getenv('HIDE_CAMERA', 'false').lower() == 'true'
 SHOW_ROTATION_COUNT = os.getenv('SHOW_ROTATION_COUNT', 'true').lower() == 'true'
+# Kirim file SQL di cron/sql ke PostgreSQL lewat thread latar. false = file tetap ditulis, tidak dikirim.
+ENABLE_DB_SYNC = os.getenv('ENABLE_DB_SYNC', 'true').lower() == 'true'
 
 # Jumlah level maksimum (default 8 jika tidak diset atau tidak valid)
 try:
