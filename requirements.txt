@@ -21,3 +21,4 @@ python-dotenv
 mediapipe==0.10.14
 ultralytics
 pyserial
+setuptools<81

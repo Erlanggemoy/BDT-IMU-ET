@@ -2,7 +2,10 @@
 
 ### 1. Persiapan Environment
 
-Buat dan aktifkan virtual environment (opsional tapi direkomendasikan):
+Buat dan aktifkan virtual environment (opsional tapi direkomendasikan). Untuk BDT IMU Eye Tracker menggunakan python versi 3.10 dikarenakan library dari Tobii Eye Tracker hanya kompatible dengan versi tersebut. Untuk library tobii eye tracker 5/tobii stream engine ada dilink berikut:
+
+Tobii Stream Engine
+[Tobii Stream Engine](https://www.nuget.org/api/v2/package/Tobii.StreamEngine.Native/2.2.2.363)
 
 ```bash
 # Windows

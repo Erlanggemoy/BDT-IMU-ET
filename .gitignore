@@ -9,3 +9,4 @@ agents.md
 venv310/
 camera_settings.json
 runtime_errors.log
+DLL/tobii_stream_engine.dll
