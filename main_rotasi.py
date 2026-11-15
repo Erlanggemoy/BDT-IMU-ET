@@ -5,12 +5,11 @@ import cv2
 import os
 import math
 import time
-import sys
 import threading
 import traceback
 from pathlib import Path
 from config import (
-    BASE_DIR, DISPLAY_HALF, BUTTON_MODE, HIDE_CAMERA, SHOW_ROTATION_COUNT,
+    BASE_DIR, DISPLAY_HALF, BUTTON_MODE, HIDE_CAMERA, SHOW_ROTATION_COUNT, ENABLE_DB_SYNC,
     MAX_LEVEL, LEVEL_COUNT, COUNTDOWN_SECONDS, CUSTOM_LEVELS, LEVEL_PATHS, LEVEL_ANSWERS,
 )  # config memuat .env: harus diimpor sebelum modul lain yang membaca env (mis. audio)
 from scoring import estimate_cognitive_age, average_cognitive_age
@@ -28,81 +27,9 @@ from audio import play_audio
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Learning
 
 import torch
- 
-# Device configuration
-print("GPU CUDA is Available : " + str(torch.cuda.is_available()))
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+from model_loader import load_models
 
-USE_BANTAL_MODEL = os.getenv('MODEL_BANTAL', 'false').lower() == 'true'
-if USE_BANTAL_MODEL:
-    PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'bantal', 'bantal.pt')
-    
-    try:
-        print(">>> Loading bantal.pt with Ultralytics format...")
-        
-        # Cek apakah ini model Ultralytics (v8+ atau v7.0+)
-        checkpoint = torch.load(PATH_MODEL, map_location='cpu', weights_only=False)
-        
-        if 'version' in checkpoint:
-            print(f">>> Model version: {checkpoint['version']}")
-        
-        # Jika model dari Ultralytics (punya key 'version')
-        if 'version' in checkpoint and hasattr(checkpoint['model'], '__class__') and \
-           'ultralytics' in str(checkpoint['model'].__class__):
-            
-            print(">>> Detected Ultralytics format, loading with ultralytics library...")
-            
-            # Coba load dengan ultralytics library
-            try:
-                from ultralytics import YOLO
-                model_yolo = YOLO(PATH_MODEL)
-                model_yolo.to(device)
-                print(">>> Model bantal.pt loaded successfully with Ultralytics YOLO")
-            except ImportError:
-                print(">>> Ultralytics library not found, installing...")
-                import subprocess
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "ultralytics"])
-                from ultralytics import YOLO
-                model_yolo = YOLO(PATH_MODEL)
-                model_yolo.to(device)
-                print(">>> Model bantal.pt loaded successfully with Ultralytics YOLO")
-        
-        else:
-            # Fallback: gunakan attempt_load biasa
-            print(">>> Loading with attempt_load...")
-            import sys
-            sys.path.insert(0, os.path.join(BASE_DIR, 'MODEL', 'yolov5'))
-            from models.experimental import attempt_load
-            
-            model_yolo = attempt_load(PATH_MODEL, device=device)
-            
-            # Inisialisasi grid untuk model lama
-            for m in model_yolo.modules():
-                if type(m).__name__ == 'Detect':
-                    if not hasattr(m, 'grid'):
-                        m.grid = [torch.zeros(1)] * m.nl
-                    if not hasattr(m, 'anchor_grid'):
-                        m.anchor_grid = [torch.zeros(1)] * m.nl
-            
-            model_yolo.to(device)
-            print(">>> Model bantal.pt loaded successfully with attempt_load")
-    
-    except Exception as e:
-        print(f">>> Failed to load bantal.pt: {e}")
-        print(">>> Falling back to best.pt...")
-        USE_BANTAL_MODEL = False
-        PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'exp7', 'weights', 'best.pt')
-
-if not USE_BANTAL_MODEL:
-    PATH_MODEL = os.path.join(BASE_DIR, 'MODEL', 'exp7', 'weights', 'best.pt')
-    model_yolo = torch.hub.load(
-        os.path.join(BASE_DIR, 'MODEL', 'yolov5'), 
-        'custom', 
-        path=PATH_MODEL, 
-        force_reload=True, 
-        source='local'
-    )
-    model_yolo.to(device)
+model_yolo, _device, USE_BANTAL_MODEL = load_models()
 
 # Random Level
 import random
@@ -240,9 +167,12 @@ def sql_executor_worker():
         traceback.print_exc()
 
 # Start SQL executor thread saat aplikasi dimulai
-sql_executor_thread = threading.Thread(target=sql_executor_worker, daemon=True, name="SQLExecutor")
-sql_executor_thread.start()
-print(">>> SQL Executor background thread started (checking every 5 seconds)")
+if ENABLE_DB_SYNC:
+    sql_executor_thread = threading.Thread(target=sql_executor_worker, daemon=True, name="SQLExecutor")
+    sql_executor_thread.start()
+    print(">>> SQL Executor background thread started (checking every 5 seconds)")
+else:
+    print(">>> SQL Executor disabled (ENABLE_DB_SYNC=false). File SQL tetap ditulis ke cron/sql.")
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Text to  
 
