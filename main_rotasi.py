@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 import serial
 import serial.tools.list_ports
+from scoring import estimate_cognitive_age, average_cognitive_age
+from scoring import cognitive_fitness as fitness_from_ages
 from datetime import datetime
 from eyetracker_module import EyeTrackerHandler
 
@@ -1765,11 +1767,7 @@ class TimeIn(customtkinter.CTk):
         self.game_started = False
         self.preload_level_images()
         self.after(200, self.streaming)
-        
-        #SpeakTextG("赤と白の 4 つのブロックから表示されたデザインを作成してください。")
-        #SpeakTextG("左手または利き手と反対の手で操作してください。")
-        #SpeakTextG("準備ができたらスタートボタンを押してください。")
-    
+
     def preload_level_images(self):
         """Preload and cache all level images to avoid I/O lag during gameplay"""
         print(">>> Preloading level images...")
@@ -1811,16 +1809,10 @@ class TimeIn(customtkinter.CTk):
         self.gaze_dot.place_forget()
         self.timer_task_avg = format(float(sum(self.timer_task_all) / len(self.timer_task_all)), ".3f")
         total_time = sum(self.timer_task_all)
-        cognitive_age_avg = int(sum(self.cognitive_age_list) / len(self.cognitive_age_list))
         age_real = int(self.age_range_code)
-        age_cog = cognitive_age_avg
+        age_cog = average_cognitive_age(self.cognitive_age_list)
 
-        visuo_spatial = 100
-
-        if age_cog <= age_real:
-            visuo_spatial = 100 
-        else:
-            visuo_spatial = 100 - (age_cog - age_real)
+        visuo_spatial = fitness_from_ages(age_cog, age_real)
 
         print("Your name is " + self.nick_name)
         print("Your gender is " + self.gender_code)
@@ -2084,7 +2076,7 @@ END $$;
     def _record_level(self, level, seconds):
         self.level_times[level] = seconds
         self.timer_task_all.append(seconds)
-        self.cognitive_age_list.append(self.estimate_cognitive_age(seconds))
+        self.cognitive_age_list.append(estimate_cognitive_age(seconds))
         self.task_flag[level] = False
 
     def _start_level(self, level):
@@ -2370,55 +2362,6 @@ END $$;
         # Reset and start the timer
         self.reset_timer()
         self.start_timer()
-
-    #def button_1_callback(self):
-
-        #os.execl(sys.executable, os.path.abspath(__file__), *sys.argv)
-        #sys.exit() 
-
-
-
-    def estimate_cognitive_age(self, time_finish_one_task):
-        
-        from sklearn.preprocessing import PolynomialFeatures
-        from sklearn.linear_model import LinearRegression
-
-        # Transform the input features to higher-degree polynomials, Create a polynomial regression model
-        # Fit the model to the transformed data, Predict y values for new x values
-
-        degree = 2
-        poly_features = PolynomialFeatures(degree=degree)
-
-        #x_time      = np.array([13, 14, 15, 16, 17, 18, 22, 25, 30, 33, 37, 40, 45, 50]).reshape(-1, 1)
-        
-        x_time      = np.array([ 9, 10, 11, 12, 14, 16, 18, 20, 25, 30, 35, 40, 45, 50]).reshape(-1, 1)
-        y_age       = np.array([20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85])
-
-        time_avg = time_finish_one_task # * 1.5  # second
-
-        x_time_poly = poly_features.fit_transform(x_time)
-        model_time = LinearRegression()
-        model_time.fit(x_time_poly, y_age)
-
-        new_x_time = np.array([time_avg]).reshape(-1, 1)
-        new_x_time_poly = poly_features.transform(new_x_time)
-        cognitive_age = model_time.predict(new_x_time_poly)
-
-        #print(cognitive_age)
-
-        cognitive_age = model_time.predict(new_x_time_poly)
-        cognitive_age = float(np.asarray(cognitive_age).item())   # ambil scalar sekali di sini
-
-        if cognitive_age < 20:
-            cognitive_age = 20
-        elif cognitive_age > 85:
-            cognitive_age = 90
-        
-        cognitive_age = int(cognitive_age)
-
-        return cognitive_age #.tolist()[0]
-
-        #print("Estimated Cognitive Age : " + str(round(cognitive_age[0], 1)) + " years")
 
     def show_current_level_button(self, level):
         self.current_level_button = customtkinter.CTkLabel(
